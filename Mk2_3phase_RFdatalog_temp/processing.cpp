@@ -3,9 +3,9 @@
  * @author Frédéric Metrich (frederic.metrich@live.fr)
  * @brief Implements the processing engine
  * @version 0.1
- * @date 2025-11-28
+ * @date 2026-01-25
  *
- * @copyright Copyright (c) 2021-2025
+ * @copyright Copyright (c) 2021-2026
  *
  */
 
@@ -349,22 +349,25 @@ void updatePortsStates()
 
   // Update LOCAL loads only (remote loads are handled via RF in remote_loads.h)
   constexpr uint8_t numLocalLoads = NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS;
-  uint8_t i{ numLocalLoads };
 
-  do
+  if constexpr (numLocalLoads > 0)
   {
-    --i;
-    // update the local load's state
-    if (LoadStates::LOAD_OFF == physicalLoadState[i])
+    uint8_t i{ numLocalLoads };
+    do
     {
-      pinsOFF |= bit(physicalLoadPin[i]);
-    }
-    else
-    {
-      ++countLoadON[i];
-      pinsON |= bit(physicalLoadPin[i]);
-    }
-  } while (i);
+      --i;
+      // update the local load's state
+      if (LoadStates::LOAD_OFF == physicalLoadState[i])
+      {
+        pinsOFF |= bit(physicalLoadPin[i]);
+      }
+      else
+      {
+        ++countLoadON[i];
+        pinsON |= bit(physicalLoadPin[i]);
+      }
+    } while (i);
+  }
 
   // Update optional status LEDs for remote loads
   if constexpr (NO_OF_REMOTE_LOADS > 0)

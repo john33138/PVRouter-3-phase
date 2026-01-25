@@ -15,9 +15,9 @@
  * - **Watchdog**: Toggles a pin to indicate system activity.
  *
  * @version 0.1
- * @date 2023-02-15
+ * @date 2026-01-25
  *
- * @copyright Copyright (c) 2023
+ * @copyright Copyright (c) 2023-2026
  *
  */
 
@@ -82,7 +82,7 @@ uint16_t getDualTariffForcingBitmask(const int16_t currentTemperature_x100)
   // We're in off-peak period - check forcing time windows
   const auto ulElapsedTime{ static_cast< uint32_t >(millis() - ul_TimeOffPeak) };
 
-  uint16_t forcingBitmask{ 0 };
+  uint16_t forcingBitmask = 0;
   uint8_t i{ NO_OF_DUMPLOADS };
   do
   {
@@ -124,7 +124,7 @@ uint16_t getDualTariffForcingBitmask(const int16_t currentTemperature_x100)
  */
 uint16_t getOverrideBitmask(const int16_t currentTemperature_x100)
 {
-  uint16_t overrideBitmask{ 0 };
+  uint16_t overrideBitmask = 0;
 
   // Add external override pins
   if constexpr (OVERRIDE_PIN_PRESENT)
@@ -502,10 +502,8 @@ void loop()
   static bool bOffPeak{ false };
   static int16_t iTemperature_x100{ 0 };
 
-#ifdef ENABLE_REMOTE_LOADS
   // Process any pending RF transmissions (called outside ISR to avoid blocking)
   processRemoteLoadTransmissions();
-#endif
 
   if (Shared::b_newMainsCycle)  // flag is set after every pair of ADC conversions
   {

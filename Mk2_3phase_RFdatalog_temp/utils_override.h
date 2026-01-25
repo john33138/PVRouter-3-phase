@@ -24,8 +24,8 @@
  *
  * @author Frédéric Metrich (frederic.metrich@live.fr)
  * @version 0.1
- * @date 2025-09-08
- * @copyright Copyright (c) 2025
+ * @date 2026-01-25
+ * @copyright Copyright (c) 2025-2026
  */
 
 #ifndef UTILS_OVERRIDE_H
@@ -43,6 +43,7 @@
 constexpr uint8_t LOAD(uint8_t loadNum)
 {
   constexpr uint8_t numLocalLoads = NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS;
+
   if (loadNum < numLocalLoads)
   {
     return physicalLoadPin[loadNum];
