@@ -503,7 +503,10 @@ void loop()
   static int16_t iTemperature_x100{ 0 };
 
   // Process any pending RF transmissions (called outside ISR to avoid blocking)
-  processRemoteLoadTransmissions();
+  if constexpr (REMOTE_LOADS_PRESENT)
+  {
+    processRemoteLoadTransmissions();
+  }
 
   if (Shared::b_newMainsCycle)  // flag is set after every pair of ADC conversions
   {
