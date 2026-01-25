@@ -448,13 +448,28 @@ void updatePhysicalLoadStates()
     }
   }
 
+  constexpr uint8_t numLocalLoads = NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS;
   const bool bDiversionEnabled{ Shared::b_diversionEnabled };
   uint8_t idx{ NO_OF_DUMPLOADS };
   do
   {
     --idx;
     const auto iLoad{ loadPrioritiesAndState[idx] & loadStateMask };
-    const bool bOverrideActive = Shared::overrideBitmask & (1U << physicalLoadPin[iLoad]);
+
+    // Check override based on load type (local vs remote)
+    bool bOverrideActive;
+    if (iLoad < numLocalLoads)
+    {
+      // Local load: check physical pin in local override bitmask
+      bOverrideActive = Shared::overrideBitmask & (1U << physicalLoadPin[iLoad]);
+    }
+    else
+    {
+      // Remote load: check remote index in remote override bitmask
+      const uint8_t remoteIndex = iLoad - numLocalLoads;
+      bOverrideActive = Shared::remoteOverrideBitmask & (1U << remoteIndex);
+    }
+
     physicalLoadState[iLoad] = bDiversionEnabled && (bOverrideActive || (loadPrioritiesAndState[idx] & loadStateOnBit)) ? LoadStates::LOAD_ON : LoadStates::LOAD_OFF;
   } while (idx);
 
@@ -466,7 +481,7 @@ void updatePhysicalLoadStates()
     do
     {
       --i;
-      remoteLoadState[i] = physicalLoadState[NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS + i];
+      remoteLoadState[i] = physicalLoadState[numLocalLoads + i];
     } while (i);
     // Note: updateRemoteLoads() is called after updatePortsStates() in processStartNewCycle()
   }

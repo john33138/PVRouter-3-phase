@@ -145,12 +145,26 @@ inline constexpr RelayEngine relays{ MINUTES(RELAY_FILTER_DELAY),
 // This is an example of override pin configuration.
 // You can modify the pin numbers and associated loads/relays as needed.
 // Ensure that the pins used do not conflict with other functionalities in your setup.
-// This example does not make any sense, that's just to show how to use the class OverridePins
-// inline constexpr OverridePins overridePins{ { { 3, { RELAY(1), LOAD(1) } },
-//                                               { 4, ALL_LOADS() },
-//                                               { 11, { 1, LOAD(1), LOAD(2) } },
-//                                               { 12, { RELAY(0), 9, RELAY(2) } },
-//                                               { 13, ALL_LOADS_AND_RELAYS() } } }; /**< list of override pin/loads-relays pairs */
+//
+// Helper functions available:
+//   LOCAL_LOAD(n)     - Returns physical pin for local load n
+//   REMOTE_LOAD(n)    - Returns virtual pin for remote load n (>= 128)
+//   LOAD(n)           - Returns pin for any load (physical for local, virtual for remote)
+//   ALL_LOCAL_LOADS() - uint32_t bitmask, lower 16 bits for local load pins
+//   ALL_REMOTE_LOADS()- uint32_t bitmask, upper 16 bits for remote loads (bit 16 = remote 0)
+//   ALL_LOADS()       - uint32_t combining local (lower 16 bits) and remote (upper 16 bits)
+//   RELAY(n)          - Returns pin for relay n
+//   ALL_RELAYS()      - uint32_t bitmask, lower 16 bits for relay pins
+//   ALL_LOADS_AND_RELAYS() - uint32_t combining all loads and relays
+//
+// Example configurations:
+// inline constexpr OverridePins overridePins{
+//   { { 4, ALL_LOADS() },                                  // Control all loads (local + remote)
+//     { 5, ALL_LOCAL_LOADS() },                            // Control only local loads
+//     { 6, ALL_REMOTE_LOADS() },                           // Control only remote loads
+//     { 7, { LOCAL_LOAD(0), REMOTE_LOAD(1) } },            // Mixed: local load 0 + remote load 1
+//     { 8, { LOAD(0), LOAD(1), LOAD(2), LOAD(3) } },       // Using LOAD() for any load index
+//     { 9, ALL_LOADS_AND_RELAYS() } } };                   // All loads and relays
 
 inline constexpr OverridePins overridePins{ { { 4, ALL_LOADS() } } }; /**< list of override pin/loads-relays pairs */
 

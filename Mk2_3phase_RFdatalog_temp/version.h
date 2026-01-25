@@ -7,8 +7,8 @@
 
 #define PROJECT_PATH "Mk2_3phase_RFdatalog_temp"
 #define CURRENT_TIME "YYYY-MM-DD HH:MM:SS+TZ"
-#define BRANCH_NAME "unknown"
-#define COMMIT_HASH "00000000"
-#define BUILD_ENV "arduino"
+#define BRANCH_NAME "N/A"
+#define COMMIT_HASH "N/A"
+#define BUILD_ENV "basic"
 
 #endif  // VERSION_H

@@ -46,6 +46,21 @@ static_assert(__cplusplus >= 201703L, "See also : https://github.com/FredM67/PVR
 //
 
 /**
+ * @struct OverrideMasks
+ * @brief Holds both local and remote override bitmasks.
+ *
+ * @var OverrideMasks::local
+ * Bitmask for local loads and relays (physical pins 2-13).
+ * @var OverrideMasks::remote
+ * Bitmask for remote loads (bit n = remote load n).
+ */
+struct OverrideMasks
+{
+  uint16_t local;
+  uint8_t remote;
+};
+
+/**
  * @brief Calculates the dual tariff forcing bitmask based on current conditions.
  *
  * This function determines which loads should be forced ON during off-peak periods
@@ -104,27 +119,29 @@ uint16_t getDualTariffForcingBitmask(const int16_t currentTemperature_x100)
 }
 
 /**
- * @brief Gets the combined bitmask of all active override pins and dual tariff forcing.
+ * @brief Gets the combined bitmasks of all active override pins and dual tariff forcing.
  *
- * This function calculates the complete override bitmask by combining external override pins
- * with dual tariff automatic forcing. The bitwise OR operation automatically handles precedence
- * where external overrides take priority over dual tariff forcing for the same pins.
+ * This function calculates the complete override bitmasks (local and remote) by combining
+ * external override pins with dual tariff automatic forcing. The bitwise OR operation
+ * automatically handles precedence where external overrides take priority over dual tariff
+ * forcing for the same pins.
  *
  * @param currentTemperature_x100 Current temperature multiplied by 100 (used for dual tariff logic).
- * @return Combined bitmask of all active overrides (external pins + dual tariff), 0 if no overrides are active.
+ * @return OverrideMasks struct containing both local (physical pins) and remote (virtual pins) bitmasks.
  *
  * @details
  * - First checks all configured external override pins and sets corresponding bits.
- * - Then applies dual tariff forcing using bitwise OR operation.
+ * - Local bitmask controls physical pins (loads/relays on pins 2-13).
+ * - Remote bitmask controls remote loads (bit n = remote load n).
+ * - Then applies dual tariff forcing using bitwise OR operation (local only).
  * - OR operation ensures external overrides take precedence (1|x = 1).
- * - For pins without external overrides (0|x = x), dual tariff forcing is applied.
  * - Function is called atomically to prevent race conditions with ISR.
  *
  * @ingroup GeneralProcessing
  */
-uint16_t getOverrideBitmask(const int16_t currentTemperature_x100)
+OverrideMasks getOverrideBitmask(const int16_t currentTemperature_x100)
 {
-  uint16_t overrideBitmask = 0;
+  OverrideMasks masks{ 0, 0 };
 
   // Add external override pins
   if constexpr (OVERRIDE_PIN_PRESENT)
@@ -139,7 +156,8 @@ uint16_t getOverrideBitmask(const int16_t currentTemperature_x100)
 
       if (!pinState)  // Pin is LOW (active)
       {
-        overrideBitmask |= overridePins.getBitmask(i);
+        masks.local |= overridePins.getLocalBitmask(i);
+        masks.remote |= overridePins.getRemoteBitmask(i);
       }
     } while (i);
   }
@@ -147,9 +165,10 @@ uint16_t getOverrideBitmask(const int16_t currentTemperature_x100)
   // Add dual tariff forcing - OR operation handles precedence automatically
   // If a bit is already set by external override, OR won't change it
   // If a bit is not set, OR will apply dual tariff forcing
-  overrideBitmask |= getDualTariffForcingBitmask(currentTemperature_x100);
+  // Note: Dual tariff only applies to local loads
+  masks.local |= getDualTariffForcingBitmask(currentTemperature_x100);
 
-  return overrideBitmask;
+  return masks;
 }
 
 /**
@@ -460,22 +479,22 @@ void handlePerSecondTasks(bool &bOffPeak, int16_t &iTemperature_x100)
 
   checkDiversionOnOff();
 
-  // Get complete override bitmask atomically (external pins + dual tariff forcing)
-  // This is checked once per second for debouncing and to avoid excessive ISR updates
-  uint16_t privateOverrideBitmask{ getOverrideBitmask(iTemperature_x100) };
+  // Get complete override bitmasks atomically (external pins + dual tariff forcing)
+  OverrideMasks privateOverrideMasks = getOverrideBitmask(iTemperature_x100);
 
   if constexpr (RELAY_DIVERSION)
   {
     relays.inc_duration();
-    // Pass private bitmask to relay engine, it will filter out relay pins that can be controlled
-    relays.proceed_relays(privateOverrideBitmask);
+    // Pass local bitmask to relay engine, it will filter out relay pins that can be controlled
+    relays.proceed_relays(privateOverrideMasks.local);
   }
 
-  // Copy the filtered bitmask (only triac/load pins) to shared version
-  Shared::overrideBitmask = privateOverrideBitmask;
+  // Copy the bitmasks to shared versions for ISR access
+  Shared::overrideBitmask = privateOverrideMasks.local;
+  Shared::remoteOverrideBitmask = privateOverrideMasks.remote;
 
-  // Only process priority logic if no override pins are active
-  if (!Shared::overrideBitmask)
+  // Only process priority logic if no override pins are active (local or remote)
+  if (!Shared::overrideBitmask && !Shared::remoteOverrideBitmask)
   {
     bOffPeak = proceedLoadPriorities(iTemperature_x100);
   }
