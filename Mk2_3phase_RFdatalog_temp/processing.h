@@ -3,9 +3,9 @@
  * @author Frédéric Metrich (frederic.metrich@live.fr)
  * @brief Public functions/variables of processing engine
  * @version 0.1
- * @date 2025-11-28
+ * @date 2026-01-25
  *
- * @copyright Copyright (c) 2021-2025
+ * @copyright Copyright (c) 2021-2026
  *
  */
 
@@ -14,7 +14,7 @@
 
 #include "config.h"
 
-inline uint8_t loadPrioritiesAndState[NO_OF_DUMPLOADS]; /**< load priorities and states (local loads only) */
+inline uint8_t loadPrioritiesAndState[NO_OF_DUMPLOADS]; /**< load priorities and states (local + remote loads) */
 
 #ifdef RF_PRESENT
 #include "remote_loads.h"

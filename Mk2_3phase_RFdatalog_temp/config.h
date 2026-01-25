@@ -15,7 +15,7 @@
  * - 2 TRIAC outputs for dump loads
  * 
  * @version 1.0
- * @date 2024-09-06
+ * @date 2026-01-25
  */
 
 #ifndef CONFIG_H
@@ -99,8 +99,9 @@ inline constexpr uint8_t physicalLoadPin[NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS]{}
 // Optional status LED pins for REMOTE loads (set to unused_pin if not needed)
 inline constexpr uint8_t remoteLoadStatusLED[NO_OF_REMOTE_LOADS]{ unused_pin, unused_pin }; /**< Optional LEDs to show remote load status */
 
-// Load priority order at startup (0 = highest priority, applies to ALL loads: local + remote)
-// In this example: priority 0 = local load #0, priority 1 = remote load #0, priority 2 = remote load #1
+// Load priority order at startup (array index = priority, 0 = highest)
+// Load indices: 0 to (NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS - 1) are local loads,
+//               (NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS) to (NO_OF_DUMPLOADS - 1) are remote loads
 inline constexpr uint8_t loadPrioritiesAtStartup[NO_OF_DUMPLOADS]{ 0, 1 }; /**< load priorities at startup (0=highest) */
 
 // Set the value to 'unused_pin' when the pin is not needed (feature deactivated)
