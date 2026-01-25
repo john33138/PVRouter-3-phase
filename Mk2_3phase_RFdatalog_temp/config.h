@@ -35,7 +35,7 @@ inline constexpr SerialOutputType SERIAL_OUTPUT_TYPE = SerialOutputType::HumanRe
 //--------------------------------------------------------------------------------------------------
 // Basic Configuration
 //
-inline constexpr uint8_t NO_OF_DUMPLOADS{ 3 }; /**< TOTAL number of dump loads (local + remote) */
+inline constexpr uint8_t NO_OF_DUMPLOADS{ 2 }; /**< TOTAL number of dump loads (local + remote) */
 
 inline constexpr uint8_t NO_OF_REMOTE_LOADS{ 2 }; /**< number of remote loads controlled via RF */
 
@@ -94,14 +94,14 @@ inline constexpr bool REMOTE_LOADS_PRESENT{ NO_OF_REMOTE_LOADS != 0 ? true : fal
 // counterpart is properly configured to send the appropriate signals.
 
 // Physical pin assignments for LOCAL loads only (remote loads are controlled via RF)
-inline constexpr uint8_t physicalLoadPin[NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS]{ 5 }; /**< Pins for local TRIAC outputs */
+inline constexpr uint8_t physicalLoadPin[NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS]{}; /**< Pins for local TRIAC outputs */
 
 // Optional status LED pins for REMOTE loads (set to unused_pin if not needed)
 inline constexpr uint8_t remoteLoadStatusLED[NO_OF_REMOTE_LOADS]{ unused_pin, unused_pin }; /**< Optional LEDs to show remote load status */
 
 // Load priority order at startup (0 = highest priority, applies to ALL loads: local + remote)
 // In this example: priority 0 = local load #0, priority 1 = remote load #0, priority 2 = remote load #1
-inline constexpr uint8_t loadPrioritiesAtStartup[NO_OF_DUMPLOADS]{ 0, 1, 2 }; /**< load priorities at startup (0=highest) */
+inline constexpr uint8_t loadPrioritiesAtStartup[NO_OF_DUMPLOADS]{ 0, 1 }; /**< load priorities at startup (0=highest) */
 
 // Set the value to 'unused_pin' when the pin is not needed (feature deactivated)
 inline constexpr uint8_t dualTariffPin{ unused_pin }; /**< for 3-phase PCB, off-peak trigger */
@@ -153,8 +153,8 @@ inline constexpr RelayEngine relays{ MINUTES(RELAY_FILTER_DELAY),
 
 inline constexpr OverridePins overridePins{ { { 4, ALL_LOADS() } } }; /**< list of override pin/loads-relays pairs */
 
-inline constexpr uint8_t ul_OFF_PEAK_DURATION{ 8 };                        /**< Duration of the off-peak period in hours */
-inline constexpr pairForceLoad rg_ForceLoad[NO_OF_DUMPLOADS]{ { -3, 2 } }; /**< force config for load #1 ONLY for dual tariff */
+inline constexpr uint8_t ul_OFF_PEAK_DURATION{ 8 };             /**< Duration of the off-peak period in hours */
+inline constexpr pairForceLoad rg_ForceLoad[NO_OF_DUMPLOADS]{}; /**< force config for load #1 ONLY for dual tariff */
 
 inline constexpr int16_t iTemperatureThreshold{ 100 }; /**< the temperature threshold to stop overriding in °C */
 
