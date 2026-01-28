@@ -1,51 +1,104 @@
-# This is a basic workflow to help you get started with Actions
+# CI workflow for PVRouter-3-phase
+# Runs build and tests on push/PR to main and dev branches
 
 name: CI
 permissions:
   contents: read
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events for main and dev branches
 on:
   push:
     branches: [ main, dev ]
   pull_request:
     branches: [ main, dev ]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+env:
+  PROJECT_DIR: Mk2_3phase_RFdatalog_temp
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
+jobs:
+  # Setup job: installs dependencies and populates cache
+  setup:
+    name: Setup Environment
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: 'true'
-    - uses: actions/cache@v5
-      with:
-        path: |
-          ~/.cache/pip
-          ~/.platformio/.cache
-        key: ${{ runner.os }}-pio
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '>=3.11'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-    - name: Install PlatformIO Core
-      run: |
-        pip install --upgrade platformio
-    # It is important to first install the libraries before compiling, since otherwise compilation might fail to find the just-installed libraries
-    - name: Install platformIO libraries
-      run: pio pkg install --project-dir Mk2_3phase_RFdatalog_temp
-    - name: Run PlatformIO Build
-      run: |
-        pio run --project-dir Mk2_3phase_RFdatalog_temp
-    - name: Run Native Tests
-      run: |
-        pio test --project-dir Mk2_3phase_RFdatalog_temp -e native
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'true'
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '>=3.11'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+
+      - name: Install PlatformIO libraries
+        run: pio pkg install --project-dir ${{ env.PROJECT_DIR }}
+
+  # Build job: compiles firmware for embedded targets
+  build:
+    name: Build Firmware
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'true'
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '>=3.11'
+
+      - name: Restore PlatformIO cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build firmware
+        run: pio run --project-dir ${{ env.PROJECT_DIR }}
+
+  # Test job: runs native unit tests
+  test:
+    name: Run Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'true'
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '>=3.11'
+
+      - name: Restore PlatformIO cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Run native tests
+        run: pio test --project-dir ${{ env.PROJECT_DIR }} -e native
