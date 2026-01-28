@@ -48,4 +48,4 @@ jobs:
         pio run --project-dir Mk2_3phase_RFdatalog_temp
     - name: Run Native Tests
       run: |
-        pio test --project-dir Mk2_3phase_RFdatalog_temp -e native --ignore="*test_ewma_benchmark*" --ignore="*embedded*"
+        pio test --project-dir Mk2_3phase_RFdatalog_temp -e native --ignore="*test_ewma_benchmark*"
