@@ -1209,7 +1209,7 @@ void printParamsForSelectedOutputMode()
 
 /**
  * @brief Interrupt Service Routine - Interrupt-Driven Analog Conversion.
- * 
+ *
  * @details An Interrupt Service Routine is now defined which instructs the ADC to perform a conversion
  *          for each of the voltage and current sensors in turn.
  *
