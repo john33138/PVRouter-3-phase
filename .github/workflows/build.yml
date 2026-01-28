@@ -5,12 +5,12 @@ permissions:
   contents: read
 
 # Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
+# events for main and dev branches
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
