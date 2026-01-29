@@ -19,7 +19,7 @@
 Ma version du firmware Mk2PVRouter en 3 phases (voir http://www.mk2pvrouter.co.uk).
 
 Robin Emley propose déjà un routeur PV triphasé (https://www.mk2pvrouter.co.uk/3-phase-version.html).
-Il prend en charge jusqu'à 12 sorties pour charges résistives, qui sont complètement indépendantes.
+Il prend en charge jusqu’à 12 sorties pour charges résistives, qui sont complètement indépendantes.
 
 ---
 **_NOTE:_** Pour une version en monophasé, voir [PVRouter-Single](https://github.com/FredM67/PVRouter-Single).
@@ -31,12 +31,12 @@ Il prend en charge jusqu'à 12 sorties pour charges résistives, qui sont compl�
   - [Gallerie photo](#gallerie-photo)
   - [Schéma de la carte-mère](#schéma-de-la-carte-mère)
   - [Documentation de développement](#documentation-de-développement)
-  - [Documentation d'analyse et outils](#documentation-danalyse-et-outils)
+  - [Documentation d’analyse et outils](#documentation-danalyse-et-outils)
   - [Documentation de l’utilisateur final](#documentation-de-lutilisateur-final)
     - [Aperçu](#aperçu)
     - [Gestion des priorités de charge](#gestion-des-priorités-de-charge)
     - [Détection HC](#détection-hc)
-    - [Marche forcée pleine puissance](#marche-forcée-pleine-puissance)
+    - [Boost pleine puissance](#boost-pleine-puissance)
     - [Sortie(s) relais tout-ou-rien \*\* NEW \*\*](#sorties-relais-tout-ou-rien--new-)
     - [Capteur de température](#capteur-de-température)
     - [Profil Enphase zéro export](#profil-enphase-zéro-export)
@@ -44,12 +44,9 @@ Il prend en charge jusqu'à 12 sorties pour charges résistives, qui sont compl�
   - [Applications / Diagrammes de câblage](#applications--diagrammes-de-câblage)
     - [Pré-requis](#pré-requis)
     - [Chauffe-eau avec thermostat mécanique](#chauffe-eau-avec-thermostat-mécanique)
-      - [Passage du monophasé au triphasé (avec neutre)](#passage-du-monophasé-au-triphasé-avec-neutre)
-      - [Câblage](#câblage)
     - [Chauffe-eau avec thermostat ACI monophasé](#chauffe-eau-avec-thermostat-aci-monophasé)
     - [Chauffe-eau avec thermostat ACI triphasé (SANS neutre)](#chauffe-eau-avec-thermostat-aci-triphasé-sans-neutre)
     - [Alternatives SANS neutre](#alternatives-sans-neutre)
-      - [Chauffe-eau avec thermostat mécanique](#chauffe-eau-avec-thermostat-mécanique-1)
   - [Support](#support)
   - [Roadmap](#roadmap)
   - [Contributing](#contributing)
@@ -58,7 +55,7 @@ Il prend en charge jusqu'à 12 sorties pour charges résistives, qui sont compl�
 ## Aperçu des dossiers
 - [**Mk2_3phase_RFdatalog_temp**](Mk2_3phase_RFdatalog_temp) : contient tous les fichiers nécessaires au programme du routeur.
 - [**dev**](dev) : contient divers programmes pour le développement du routeur.
-    - [**cal_CTx_v_meter**](dev/cal_CTx_v_meter) : contient tous les fichiers nécessaires au programme d'étalonnage du routeur.
+    - [**cal_CTx_v_meter**](dev/cal_CTx_v_meter) : contient tous les fichiers nécessaires au programme d’étalonnage du routeur.
     - **RawSamplesTool_6chan** : permet de tester les 6 canaux de mesure.
 - autres dossiers : contiennent des fichiers divers et variés relatifs au site.
 
@@ -74,15 +71,15 @@ Vous trouverez [ici](schematics/3phase_Mainboard.pdf) le schéma de la carte-mè
 
 Vous pouvez commencer à lire la documentation ici [3-phase routeur](https://fredm67.github.io/PVRouter-3-phase/) (en anglais).
 
-## Documentation d'analyse et outils
+## Documentation d’analyse et outils
 
-📊 **[Outils d'Analyse et Documentation Technique](analysis/README.md)** [![en](https://img.shields.io/badge/lang-en-red.svg)](analysis/README.en.md)
+📊 **[Outils d’Analyse et Documentation Technique](analysis/README.md)** [![en](https://img.shields.io/badge/lang-en-red.svg)](analysis/README.en.md)
 
-Cette section contient des outils d'analyse avancés et de la documentation technique pour :
+Cette section contient des outils d’analyse avancés et de la documentation technique pour :
 
-- **🔄 Filtrage EWMA/TEMA** : Analyse de l'immunité aux nuages et optimisation des filtres
+- **🔄 Filtrage EWMA/TEMA** : Analyse de l’immunité aux nuages et optimisation des filtres
 - **📈 Analyse de performance** : Scripts de visualisation et benchmarks
-- **⚙️ Guide de réglage** : Documentation pour l'optimisation des paramètres
+- **⚙️ Guide de réglage** : Documentation pour l’optimisation des paramètres
 - **📊 Graphiques techniques** : Comparaisons visuelles des algorithmes de filtrage
 
 > **Utilisateurs avancés :** Ces outils vous aideront à comprendre et optimiser le comportement du routeur PV, notamment pour les installations avec variabilité de production solaire ou systèmes de batteries.
@@ -97,26 +94,26 @@ Fonctionnalités ajoutées :
 
 - gestion des priorités de charge (configurable)
 - détection HC/HP (configurable)
-- forçage à pleine puissance
+- boost pleine puissance
 - capteur de température (juste la lecture pour le moment)
 - enregistrement de données optimisé (RF)
 - sortie série en JSON ou TXT
 
 Le programme original a dû être entièrement retravaillé et re-structuré pour permettre la lecture de la température. Dans le programme d’origine, l’ISR ne fait que lire et convertir les données analogiques, et le traitement se fait dans la boucle *loop*. Cela ne fonctionnera pas avec un capteur de température en raison de ses performances lentes. Il déstabiliserait l’ensemble du système, des données de courant / tension seraient perdues, ...
 
-Maintenant, tout le traitement critique en termes de temps se fait à l’intérieur de l’ISR, les autres tâches comme la journalisation des données (RF), la sortie série, la lecture de la température sont faites à l’intérieur de la boucle *loop()*. L’ISR et le processeur principal communiquent entre eux par le biais d'« événements ».
+Maintenant, tout le traitement critique en termes de temps se fait à l’intérieur de l’ISR, les autres tâches comme la journalisation des données (RF), la sortie série, la lecture de la température sont faites à l’intérieur de la boucle *loop()*. L’ISR et le processeur principal communiquent entre eux par le biais d’« événements ».
 
 ### Gestion des priorités de charge
 
-Dans ma variante du programme de Robin, les 3 charges sont toujours physiquement indépendantes, c'est-à-dire que le routeur va détourner l’excédent d’énergie à la première charge (priorité la plus élevée) de 0% à 100%, puis à la seconde (0% à 100%) et enfin à la troisième.
+Dans ma variante du programme de Robin, les 3 charges sont toujours physiquement indépendantes, c’est-à-dire que le routeur va détourner l’excédent d’énergie à la première charge (priorité la plus élevée) de 0% à 100%, puis à la seconde (0% à 100%) et enfin à la troisième.
 
 Pour éviter que les priorités restent tout le temps inchangées, ce qui signifie que la charge 1 fonctionnera beaucoup plus que la charge 2, qui elle-même fonctionnera plus que la charge 3, j’ai ajouté une gestion des priorités. Chaque jour, les priorités des charges sont permutées, donc sur plusieurs jours, tous les éléments de chauffage fonctionneront en moyenne de façon équitable.
 
 ### Détection HC
 
-Selon le pays, certains compteurs d’énergie disposent d'interrupteur/relais qui bascule au début de la période creuse. Il est destiné à contrôler un commutateur HC/HP. Si vous le reliez à une broche numérique libre du routeur (dans mon cas D3), vous pouvez détecter le début et fin des HC.
+Selon le pays, certains compteurs d’énergie disposent d’interrupteur/relais qui bascule au début de la période creuse. Il est destiné à contrôler un commutateur HC/HP. Si vous le reliez à une broche numérique libre du routeur (dans mon cas D3), vous pouvez détecter le début et fin des HC.
 
-### Marche forcée pleine puissance
+### Boost pleine puissance
 
 Le support a été ajouté pour forcer la pleine puissance sur des charges spécifiques. Chaque charge peut être forcée indépendamment les unes des autres, l’heure de début et la durée peuvent être définies individuellement.
 
@@ -125,19 +122,19 @@ Dans ma variante, c’est utilisé pour changer le chauffage pendant la période
 ### Sortie(s) relais tout-ou-rien ** NEW **
 
 Une ou plusieurs sorties tout-ou-rien via un relais peuvent être maintenant pilotées par le routeur.
-Leur priorité sera toujours en dernier, c'est-à-dire que les sorties TRIAC hachées auront toujours une priorité plus élevée.
+Leur priorité sera toujours en dernier, c’est-à-dire que les sorties TRIAC hachées auront toujours une priorité plus élevée.
 
-L'utilisateur devra définir pour cela, et ce pour chaque sortie relais :
+L’utilisateur devra définir pour cela, et ce pour chaque sortie relais :
 - le seuil de surplus pour le déclenchement du relais (par défaut 1000W)
-- le seuil d'import pour l'arrêt du relais (par défaut 200W)
+- le seuil d’import pour l’arrêt du relais (par défaut 200W)
 - le temps minimal de fonctionnement du relais en minutes (par défaut 5 mn)
-- le temps minimal d'arrêt du relais en minutes (par défaut 5 mn)
+- le temps minimal d’arrêt du relais en minutes (par défaut 5 mn)
 
-Les seuils de surplus et d'import sont calculés par une moyenne glissante sur une période de temps donnée. Par défaut, les moyennes sont calculées sur 1 minute.
+Les seuils de surplus et d’import sont calculés par une moyenne glissante sur une période de temps donnée. Par défaut, les moyennes sont calculées sur 1 minute.
 
 ### Capteur de température
 
-Il peut être utilisé pour optimiser le fonctionnement de la marche forcée, pour prendre la bonne décision pendant la nuit.
+Il peut être utilisé pour optimiser le fonctionnement du mode boost, pour prendre la bonne décision pendant la nuit.
 
 ### Profil Enphase zéro export
 
@@ -145,7 +142,7 @@ Lorsque le profil zéro-export est activé, le système PV réduit la production
 
 Comme effet secondaire, le routeur ne verra pas à aucun moment un surplus d’énergie.
 L’idée est donc d’appliquer un certain décalage à l’énergie mesurée par le routeur.
-Comme il est déjà commenté dans le code, après l'assignation d’une valeur négative à *REQUIRED_EXPORT_IN_WATTS*, le routeur agira comme un générateur PV.
+Comme il est déjà commenté dans le code, après l’assignation d’une valeur négative à *REQUIRED_EXPORT_IN_WATTS*, le routeur agira comme un générateur PV.
 Si vous définissez une valeur de *-20*, chaque fois que le routeur mesure le flux d’énergie, il ajoutera *-20* aux mesures.
 
 Alors, maintenant voyons ce qui se passe dans différents cas:
@@ -160,7 +157,7 @@ Lorsque la production (et l’excédent) arrive au maximum possible, la valeur m
 Cela a été testé en situation réelle par Amorim. Selon chaque situation, il peut être nécessaire de modifier cette valeur de *-20* à une valeur plus grande ou plus petite.
 
 ## Comment câbler le routeur
-[Ici](docs/HowToInstall.pdf) vous trouverez une rapide notice d'installation du routeur.
+[Ici](docs/HowToInstall.pdf) vous trouverez une rapide notice d’installation du routeur.
 
 ## Applications / Diagrammes de câblage
 
@@ -174,7 +171,7 @@ Je veux:
 
 ### Pré-requis
 
-Votre chauffe-eau DOIT supporter le câblage en triphasé (c'est-à-dire il doit y avoir 3 éléments chauffants).
+Votre chauffe-eau DOIT supporter le câblage en triphasé (c’est-à-dire il doit y avoir 3 éléments chauffants).
 
 ---
 **_Avertissement de sécurité_**
@@ -191,11 +188,11 @@ Soyez sûr de savoir ce que vous entreprenez. Au besoin, faîtes appel à un él
 ---
 **_Nécessite un routeur avec 3 sorties_**
 
-Avec cette solution, vous commandez chaque résistance séparément l'une de l'autre.
+Avec cette solution, vous commandez chaque résistance séparément l’une de l’autre.
 
 ---
 
-Vous devrez séparer les 3 éléments de chauffage, et probablement ajouter un nouveau fil pour chacun d’eux. Parfois, les éléments sont reliés ensemble avec une sorte "d'étoile" métallique. Il y en a une pour la phase, et une pour le fil neutre. Vous n’avez qu’à supprimer celle de la phase, celle pour neutre doit rester câblée.
+Vous devrez séparer les 3 éléments de chauffage, et probablement ajouter un nouveau fil pour chacun d’eux. Parfois, les éléments sont reliés ensemble avec une sorte "d’étoile" métallique. Il y en a une pour la phase, et une pour le fil neutre. Vous n’avez qu’à supprimer celle de la phase, celle pour neutre doit rester câblée.
 
 #### Câblage
 
@@ -225,7 +222,7 @@ Dans ce cas, c’est en quelque sorte la même situation qu’avant. Vous n’av
 ---
 **_Nécessite un routeur avec 2 sorties_**
 
-Avec cette solution, vous commandez chaque résistance séparément l'une de l'autre.
+Avec cette solution, vous commandez chaque résistance séparément l’une de l’autre.
 
 ---
 
@@ -243,20 +240,20 @@ La carte ACI doit être reliée à 3 phases permanentes.
 ---
 **_Nécessite un routeur avec 2 sorties_**
 
-Cette solution vous permet d'économiser le rajout d'un fil de neutre et/ou l'ajout un contacteur.
+Cette solution vous permet d’économiser le rajout d’un fil de neutre et/ou l’ajout un contacteur.
 
 ---
 
 #### Chauffe-eau avec thermostat mécanique
 
-Cette configuration permet de simplifier les branchements et surtout, il n'est plus nécessaire de rajouter un contacteur tri-/quadripolaire.
+Cette configuration permet de simplifier les branchements et surtout, il n’est plus nécessaire de rajouter un contacteur tri-/quadripolaire.
 
 ---
 **_Zoom sur le thermostat_**
 
 Il faut bien faire attention, en regardant sur le thermostat, quelles bornes sont coupées.
 
-En **rouge**, coupure de sécurité (remarquez le 'S' sur chaque contact) : les 3 phases sont coupées.
+En **rouge**, coupure de sécurité (remarquez le ’S’ sur chaque contact) : les 3 phases sont coupées.
 
 En **vert**, seules 2 phases sont coupées, L2 et L3. ***Il est très IMPORTANT que la phase L1, non coupée par le thermostat, ne passe pas par un triac***.
 
@@ -270,7 +267,7 @@ En **vert**, seules 2 phases sont coupées, L2 et L3. ***Il est très IMPORTANT 
 
 ## Support
 
-This project is maintained by [@FredM67](https://github.com/FredM67). Please understand that we won't be able to provide individual support via email. We also believe that help is much more valuable if it's shared publicly, so that more people can benefit from it.
+This project is maintained by [@FredM67](https://github.com/FredM67). Please understand that we won’t be able to provide individual support via email. We also believe that help is much more valuable if it’s shared publicly, so that more people can benefit from it.
 
 | Type                                  | Platforms                                                                     |
 | ------------------------------------- | ----------------------------------------------------------------------------- |
