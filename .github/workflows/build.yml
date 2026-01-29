@@ -75,8 +75,8 @@ jobs:
         run: pio run --project-dir ${{ env.PROJECT_DIR }}
 
   # Test job: runs native unit tests
-  test:
-    name: Run Tests
+  test-native:
+    name: Native Tests
     needs: setup
     runs-on: ubuntu-latest
     steps:
@@ -102,3 +102,58 @@ jobs:
 
       - name: Run native tests
         run: pio test --project-dir ${{ env.PROJECT_DIR }} -e native
+
+  # Embedded test job: runs tests in Wokwi simulator
+  test-embedded:
+    name: Embedded Tests (${{ matrix.test }})
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - test_fastdivision
+          - test_utils_pins
+          - test_utils_relay
+          - test_teleinfo
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'true'
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '>=3.11'
+
+      - name: Restore PlatformIO cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build test firmware
+        run: pio test --project-dir ${{ env.PROJECT_DIR }} -e uno -f ${{ matrix.test }} --without-uploading --without-testing
+
+      - name: Run test in Wokwi
+        uses: wokwi/wokwi-ci-action@v1
+        with:
+          token: ${{ secrets.WOKWI_CLI_TOKEN }}
+          path: ${{ env.PROJECT_DIR }}/test/embedded/${{ matrix.test }}
+          diagram_file: ${{ env.PROJECT_DIR }}/test/embedded/diagram.json
+          timeout: 60000
+          expect_text: 'OK'
+          fail_text: 'FAIL'
+          serial_log_file: test-output.txt
+
+      - name: Upload test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.test }}-output
+          path: test-output.txt
