@@ -1,10 +1,10 @@
 <div align = center>
 
-[![GitHub issues](https://img.shields.io/github/issues/FredM67/PVRouter−3-phase)](https://github.com/FredM67/PVRouter−3-phase/issues)
-[![GitHub forks](https://img.shields.io/github/forks/FredM67/PVRouter−3-phase)](https://github.com/FredM67/PVRouter−3-phase/network)
-[![GitHub stars](https://img.shields.io/github/stars/FredM67/PVRouter−3-phase)](https://github.com/FredM67/PVRouter−3-phase/stargazers)
-[![CodeQL](https://github.com/FredM67/PVRouter−3-phase/actions/workflows/codeql.yml/badge.svg)](https://github.com/FredM67/PVRouter−3-phase/actions/workflows/codeql.yml)
-[![Doxygen](https://github.com/FredM67/PVRouter−3-phase/actions/workflows/doxygen-gh-pages.yml/badge.svg)](https://github.com/FredM67/PVRouter−3-phase/actions/workflows/doxygen-gh-pages.yml)
+[![GitHub issues](https://img.shields.io/github/issues/FredM67/PVRouter-3-phase)](https://github.com/FredM67/PVRouter-3-phase/issues)
+[![GitHub forks](https://img.shields.io/github/forks/FredM67/PVRouter-3-phase)](https://github.com/FredM67/PVRouter-3-phase/network)
+[![GitHub stars](https://img.shields.io/github/stars/FredM67/PVRouter-3-phase)](https://github.com/FredM67/PVRouter-3-phase/stargazers)
+[![CodeQL](https://github.com/FredM67/PVRouter-3-phase/actions/workflows/codeql.yml/badge.svg)](https://github.com/FredM67/PVRouter-3-phase/actions/workflows/codeql.yml)
+[![Doxygen](https://github.com/FredM67/PVRouter-3-phase/actions/workflows/doxygen-gh-pages.yml/badge.svg)](https://github.com/FredM67/PVRouter-3-phase/actions/workflows/doxygen-gh-pages.yml)
 <br/>
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 <br/>
@@ -68,7 +68,7 @@ Vous trouverez [ici](schematics/3phase_Mainboard.pdf) le schéma de la carte-mè
 
 ## Documentation de développement
 
-Vous pouvez commencer à lire la documentation ici [3-phase routeur](https://fredm67.github.io/PVRouter−3-phase/) (en anglais).
+Vous pouvez commencer à lire la documentation ici [3-phase routeur](https://fredm67.github.io/PVRouter-3-phase/) (en anglais).
 
 ## Documentation d’analyse et outils
 
@@ -142,18 +142,18 @@ Lorsque le profil zéro-export est activé, le système PV réduit la production
 Comme effet secondaire, le routeur ne verra pas à aucun moment un surplus d’énergie.
 L’idée est donc d’appliquer un certain décalage à l’énergie mesurée par le routeur.
 Comme il est déjà commenté dans le code, après l’assignation d’une valeur négative à *REQUIRED_EXPORT_IN_WATTS*, le routeur agira comme un générateur PV.
-Si vous définissez une valeur de *−20*, chaque fois que le routeur mesure le flux d’énergie, il ajoutera *−20* aux mesures.
+Si vous définissez une valeur de *-20*, chaque fois que le routeur mesure le flux d’énergie, il ajoutera *-20* aux mesures.
 
 Alors, maintenant voyons ce qui se passe dans différents cas:
 
-- la valeur mesurée est **positive** (importation d’énergie = pas d’excédent), après avoir ajouté *−20*, cela reste positif, le routeur ne fait rien. Pour une valeur comprise entre −20 et 0, le déviateur ne fera rien non plus.
+- la valeur mesurée est **positive** (importation d’énergie = pas d’excédent), après avoir ajouté *-20*, cela reste positif, le routeur ne fait rien. Pour une valeur comprise entre -20 et 0, le déviateur ne fera rien non plus.
 - la valeur mesurée est **autour de zéro**. Dans cette situation, la limitation du "profil zéro exportation" est active.
-Après l’ajout de *−20*, nous obtenons une valeur négative, ce qui déclenchera le détournement d’énergie vers le chauffe-eau.
+Après l’ajout de *-20*, nous obtenons une valeur négative, ce qui déclenchera le détournement d’énergie vers le chauffe-eau.
 Ensuite, il y a une sorte de réaction en chaîne. L’Envoy détecte plus de consommation, décide d’augmenter la production.
-À la mesure suivante, le routeur mesure à nouveau une valeur autour de zéro, ajoute à nouveau −20, et détourne encore plus d’énergie.
+À la mesure suivante, le routeur mesure à nouveau une valeur autour de zéro, ajoute à nouveau -20, et détourne encore plus d’énergie.
 Lorsque la production (et l’excédent) arrive au maximum possible, la valeur mesurée restera autour de zéro+ et le système deviendra stable.
 
-Cela a été testé en situation réelle par Amorim. Selon chaque situation, il peut être nécessaire de modifier cette valeur de *−20* à une valeur plus grande ou plus petite.
+Cela a été testé en situation réelle par Amorim. Selon chaque situation, il peut être nécessaire de modifier cette valeur de *-20* à une valeur plus grande ou plus petite.
 
 ## Comment câbler le routeur
 [Ici](docs/HowToInstall.pdf) vous trouverez une rapide notice d’installation du routeur.
@@ -270,11 +270,11 @@ This project is maintained by [@FredM67](https://github.com/FredM67). Please und
 
 | Type                                  | Platforms                                                                     |
 | ------------------------------------- | ----------------------------------------------------------------------------- |
-| 🚨 **Bug Reports**                     | [GitHub Issue Tracker](https://github.com/FredM67/PVRouter−3-phase/issues)    |
-| 📚 **Docs Issue**                      | [GitHub Issue Tracker](https://github.com/FredM67/PVRouter−3-phase/issues)    |
-| 🎁 **Feature Requests**                | [GitHub Issue Tracker](https://github.com/FredM67/PVRouter−3-phase/issues)    |
+| 🚨 **Bug Reports**                     | [GitHub Issue Tracker](https://github.com/FredM67/PVRouter-3-phase/issues)    |
+| 📚 **Docs Issue**                      | [GitHub Issue Tracker](https://github.com/FredM67/PVRouter-3-phase/issues)    |
+| 🎁 **Feature Requests**                | [GitHub Issue Tracker](https://github.com/FredM67/PVRouter-3-phase/issues)    |
 | 🛡 **Report a security vulnerability** | See [SECURITY.md](SECURITY.md)                                                |
-| 💬 **General Questions**               | [GitHub Discussions](https://github.com/FredM67/PVRouter−3-phase/discussions) |
+| 💬 **General Questions**               | [GitHub Discussions](https://github.com/FredM67/PVRouter-3-phase/discussions) |
 
 ## Roadmap
 
@@ -288,4 +288,4 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 
 - **Frédéric Metrich** - _Initial work_ - [FredM67](https://github.com/FredM67)
 
-See also the list of [contributors](https://github.com/FredM67/PVRouter−3-phase/graphs/contributors) who participated in this project.
+See also the list of [contributors](https://github.com/FredM67/PVRouter-3-phase/graphs/contributors) who participated in this project.
