@@ -11,6 +11,7 @@ test/
 │   └── test_utils_override/
 └── embedded/         # Hardware tests (run on Arduino or Wokwi simulator)
     ├── test_fastdivision/
+    ├── test_fastdivision_perf/  # Performance benchmarks (hardware only, not CI)
     ├── test_teleinfo/
     ├── test_utils_pins/
     └── test_utils_relay/
@@ -94,6 +95,49 @@ Embedded tests run on Arduino hardware or the Wokwi simulator. They test hardwar
 | `test_divu2` | Division by 2 |
 | `test_divu1` | Division by 1 (identity) |
 
+### test_fastdivision_perf
+
+**File:** `embedded/test_fastdivision_perf/test_main.cpp`
+
+**Purpose:** Performance benchmarks comparing AVR assembly fast division to standard C division.
+
+> **Note:** This test is **excluded from CI** and must be run on real Arduino hardware for accurate timing measurements.
+
+```bash
+# Run performance benchmarks on real hardware
+pio test -e uno -f "*test_fastdivision_perf*" --upload-port /dev/ttyUSB0
+```
+
+| Test | Description |
+|------|-------------|
+| `test_perf_divu10_small_values` | Benchmarks divu10 with values 0-255 |
+| `test_perf_divu10_medium_values` | Benchmarks divu10 with values 256-4095 |
+| `test_perf_divu10_large_values` | Benchmarks divu10 with full uint16_t range |
+| `test_perf_divmod10_small_values` | Benchmarks divmod10 with small values |
+| `test_perf_divmod10_large_values` | Benchmarks divmod10 with uint32_t values |
+| `test_perf_cycle_estimation` | Estimates CPU cycles per operation |
+| `test_perf_summary` | Prints performance summary |
+
+#### Benchmark Results (Arduino Uno @ 16MHz)
+
+These results were measured on real Arduino Uno hardware:
+
+| Function | Operation | Fast Time | Standard Time | Speedup |
+|----------|-----------|-----------|---------------|---------|
+| `divu10` | uint16_t / 10 | ~29 cycles | ~100+ cycles | **3-4x** |
+| `divmod10` | uint32_t / 10 + mod | ~80 cycles | ~400+ cycles | **5-7x** |
+| `divu8` | n >> 3 | 1 cycle | 1 cycle | 1x (same) |
+| `divu4` | n >> 2 | 1 cycle | 1 cycle | 1x (same) |
+| `divu2` | n >> 1 | 1 cycle | 1 cycle | 1x (same) |
+
+**Why This Matters:**
+
+The ADC ISR runs at 9.6 kHz (every 104μs = ~1664 cycles at 16MHz). Fast division is critical because:
+- Standard 32-bit division can take 400+ cycles
+- ISR must complete in <50μs (~800 cycles) to avoid missing samples
+- `divmod10` is used for decimal output formatting in ISR-safe code
+- `divu10` is used in power calculations
+
 ### test_teleinfo
 
 **File:** `embedded/test_teleinfo/test_main.cpp`
@@ -155,8 +199,22 @@ Tests run automatically on every push via GitHub Actions:
 
 - **Native tests:** Run directly on Ubuntu runner
 - **Embedded tests:** Run in Wokwi simulator with test results published
+- **Performance tests:** Excluded from CI (require real hardware for accurate timing)
 
 See `.github/workflows/build.yml` for CI configuration.
+
+### Tests Excluded from CI
+
+Some tests are intentionally excluded from CI:
+
+| Test | Reason |
+|------|--------|
+| `test_fastdivision_perf` | Requires real hardware for accurate timing measurements |
+
+To run excluded tests manually on hardware:
+```bash
+pio test -e uno -f "*test_fastdivision_perf*"
+```
 
 ## Adding New Tests
 
