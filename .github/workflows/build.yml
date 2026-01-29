@@ -104,18 +104,11 @@ jobs:
         run: pio test --project-dir ${{ env.PROJECT_DIR }} -e native
 
   # Embedded test job: runs tests in Wokwi simulator
+  # Runs sequentially since all tests share the same build directory
   test-embedded:
-    name: Embedded Tests (${{ matrix.test }})
+    name: Embedded Tests
     needs: setup
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        test:
-          - test_fastdivision
-          - test_utils_pins
-          - test_utils_relay
-          - test_teleinfo
     steps:
       - uses: actions/checkout@v6
         with:
@@ -137,24 +130,27 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio
 
-      - name: Build test firmware
-        run: pio test --project-dir ${{ env.PROJECT_DIR }} -e uno -f ${{ matrix.test }} --without-uploading --without-testing
+      - name: Run embedded tests with Wokwi
+        env:
+          WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
+        run: |
+          # Install Wokwi CLI
+          curl -L https://wokwi.com/ci/install.sh | sh
 
-      - name: Run test in Wokwi
-        uses: wokwi/wokwi-ci-action@v1
-        with:
-          token: ${{ secrets.WOKWI_CLI_TOKEN }}
-          path: ${{ env.PROJECT_DIR }}/test/embedded/${{ matrix.test }}
-          diagram_file: ../diagram.json
-          elf: ${{ env.PROJECT_DIR }}/.pio/build/uno/firmware.elf
-          timeout: 60000
-          expect_text: 'OK'
-          fail_text: 'FAIL'
-          serial_log_file: test-output.txt
+          # Run each embedded test sequentially
+          for test in test_fastdivision test_utils_pins test_utils_relay test_teleinfo; do
+            echo "=========================================="
+            echo "Running $test"
+            echo "=========================================="
 
-      - name: Upload test output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.test }}-output
-          path: test-output.txt
+            # Build the test firmware
+            pio test --project-dir ${{ env.PROJECT_DIR }} -e uno -f "*${test}*" --without-uploading --without-testing
+
+            # Run in Wokwi simulator
+            wokwi-cli --timeout 60000 \
+              --expect-text "OK" \
+              --fail-text "FAIL" \
+              --diagram-file ${{ env.PROJECT_DIR }}/test/embedded/diagram.json \
+              --elf ${{ env.PROJECT_DIR }}/.pio/build/uno/firmware.elf \
+              ${{ env.PROJECT_DIR }}/test/embedded/${test}
+          done
