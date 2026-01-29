@@ -168,7 +168,8 @@ inline constexpr RelayEngine relays{ MINUTES(RELAY_FILTER_DELAY),
 //     { 8, { LOAD(0), LOAD(1), LOAD(2), LOAD(3) } },       // Using LOAD() for any load index
 //     { 9, ALL_LOADS_AND_RELAYS() } } };                   // All loads and relays
 
-inline constexpr OverridePins overridePins{ { { 4, ALL_LOADS() } } }; /**< list of override pin/loads-relays pairs */
+inline constexpr OverridePins overridePins{ { { 3, ALL_LOADS() },
+                                              { 4, ALL_REMOTE_LOADS() } } }; /**< list of override pin/loads-relays pairs */
 
 inline constexpr uint8_t ul_OFF_PEAK_DURATION{ 8 };             /**< Duration of the off-peak period in hours */
 inline constexpr pairForceLoad rg_ForceLoad[NO_OF_DUMPLOADS]{}; /**< force config for each load for dual tariff */
