@@ -74,11 +74,17 @@ jobs:
       - name: Build firmware
         run: pio run --project-dir ${{ env.PROJECT_DIR }}
 
-  # Test job: runs native unit tests
+  # Native test jobs: runs each native test separately
   test-native:
-    name: Native Tests
+    name: Native (${{ matrix.test }})
     needs: setup
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - test_ewma_avg
+          - test_utils_override
     steps:
       - uses: actions/checkout@v6
         with:
@@ -100,15 +106,24 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio
 
-      - name: Run native tests
-        run: pio test --project-dir ${{ env.PROJECT_DIR }} -e native
+      - name: Run ${{ matrix.test }}
+        run: pio test --project-dir ${{ env.PROJECT_DIR }} -e native -f "*${{ matrix.test }}*"
 
-  # Embedded test job: runs tests in Wokwi simulator
-  # Runs sequentially since all tests share the same build directory
+  # Embedded test jobs: runs each test in Wokwi simulator
+  # Sequential execution (max-parallel: 1) since all tests share the same build directory
   test-embedded:
-    name: Embedded Tests
+    name: Embedded (${{ matrix.test }})
     needs: setup
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        test:
+          - test_fastdivision
+          - test_utils_pins
+          - test_utils_relay
+          - test_teleinfo
     steps:
       - uses: actions/checkout@v6
         with:
@@ -130,28 +145,22 @@ jobs:
       - name: Install PlatformIO
         run: pip install --upgrade platformio
 
-      - name: Run embedded tests with Wokwi
+      - name: Install Wokwi CLI
+        run: |
+          curl -L https://wokwi.com/ci/install.sh | sh
+          echo "$HOME/bin" >> $GITHUB_PATH
+          echo "$HOME/.wokwi/bin" >> $GITHUB_PATH
+
+      - name: Build test firmware
+        run: pio test --project-dir ${{ env.PROJECT_DIR }} -e uno -f "*${{ matrix.test }}*" --without-uploading --without-testing
+
+      - name: Run ${{ matrix.test }} in Wokwi
         env:
           WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
         run: |
-          # Install Wokwi CLI
-          curl -L https://wokwi.com/ci/install.sh | sh
-          export PATH="$HOME/bin:$HOME/.wokwi/bin:$PATH"
-
-          # Run each embedded test sequentially
-          for test in test_fastdivision test_utils_pins test_utils_relay test_teleinfo; do
-            echo "=========================================="
-            echo "Running $test"
-            echo "=========================================="
-
-            # Build the test firmware
-            pio test --project-dir ${{ env.PROJECT_DIR }} -e uno -f "*${test}*" --without-uploading --without-testing
-
-            # Run in Wokwi simulator
-            wokwi-cli --timeout 60000 \
-              --expect-text "OK" \
-              --fail-text "FAIL" \
-              --diagram-file ../diagram.json \
-              --elf ${{ env.PROJECT_DIR }}/.pio/build/uno/firmware.elf \
-              ${{ env.PROJECT_DIR }}/test/embedded/${test}
-          done
+          wokwi-cli --timeout 60000 \
+            --expect-text "OK" \
+            --fail-text "FAIL" \
+            --diagram-file ../diagram.json \
+            --elf ${{ env.PROJECT_DIR }}/.pio/build/uno/firmware.elf \
+            ${{ env.PROJECT_DIR }}/test/embedded/${{ matrix.test }}
