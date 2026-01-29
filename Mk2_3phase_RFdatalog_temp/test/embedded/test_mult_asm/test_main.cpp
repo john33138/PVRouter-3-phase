@@ -424,7 +424,7 @@ void test_performance_mult16x16_to32(void)
  */
 void test_performance_mult16x8_q8(void)
 {
-  const uint16_t iterations = 1000;
+  const uint16_t iterations = 10000;
   int16_t result;
 
   // Test data
