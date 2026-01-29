@@ -318,12 +318,8 @@ void test_perf_summary(void)
 
 void setup()
 {
-  delay(2000);  // Allow time for serial monitor to connect
-  Serial.begin(115200);
-  while (!Serial)
-  {
-    ;  // Wait for serial port to connect
-  }
+  delay(1000);
+  UNITY_BEGIN();
 
   Serial.print(F("\n\n"));
   Serial.print(F("================================================================================\n"));
@@ -332,8 +328,6 @@ void setup()
   Serial.print(F("Platform: Arduino Uno (ATmega328P @ 16MHz)\n"));
   Serial.print(F("This test measures execution time of fast division vs standard division.\n"));
   Serial.print(F("================================================================================\n"));
-
-  UNITY_BEGIN();
 }
 
 void loop()
