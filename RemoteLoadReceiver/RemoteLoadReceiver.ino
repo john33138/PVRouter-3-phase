@@ -4,29 +4,29 @@
  * @version 2.0
  * @date 2025-10-25
  * @author Based on remoteUnit_fasterControl_1 by Robin Emley
- * 
+ *
  * @details This sketch receives RF commands from the main PV Router and controls
  *          local loads (TRIACs or SSRs) accordingly. Uses RFM69 library (maintained)
  *          instead of deprecated JeeLib.
- * 
+ *
  *          Supports up to 8 loads via a bitmask protocol that minimizes data transmission.
- * 
+ *
  *          Features:
  *          - Receives compact bitmask commands (1 byte for up to 8 loads)
  *          - Detects RF link failures (no messages for > 500ms)
  *          - Optional LED indicators for RF status and load states
  *          - Watchdog to detect system lockups
- * 
+ *
  *          RF Status Indication:
  *          - Green LED: RF link OK
  *          - Red LED: RF link failed/lost
- * 
+ *
  * Hardware:
  * - Arduino UNO or compatible
  * - RFM69W/CW or RFM69HW/HCW RF module
  * - TRIAC/SSR outputs for loads
  * - Optional: Status LEDs
- * 
+ *
  *      www.Mk2PVrouter.co.uk
  */
 
@@ -62,8 +62,12 @@ struct RemoteLoadPayload
 
 RemoteLoadPayload receivedData;
 
-// RFM69 radio instance (SS=D10, IRQ=D2, isRFM69HW)
-RFM69 radio(10, 2, IS_RFM69HW);
+// Pin configuration for RFM69 module
+inline constexpr uint8_t RF_CS_PIN{ 10 }; /**< SPI Chip Select pin */
+inline constexpr uint8_t RF_IRQ_PIN{ 2 }; /**< Interrupt pin */
+
+// RFM69 radio instance
+inline RFM69 radio{ RF_CS_PIN, RF_IRQ_PIN, IS_RFM69HW };
 
 // State tracking
 enum RfStatus
@@ -88,14 +92,14 @@ void setup()
     pinMode(loadPins[i], OUTPUT);
     digitalWrite(loadPins[i], LOW);  // Loads OFF initially
   }
-  
+
   // Configure status LED if present
   if (STATUS_LED_PRESENT)
   {
     pinMode(STATUS_LED_PIN, OUTPUT);
     digitalWrite(STATUS_LED_PIN, LOW);  // Start with LED off (RF lost)
   }
-  
+
   // Initialize serial for debugging
   Serial.begin(9600);
   Serial.println();
@@ -112,27 +116,27 @@ void setup()
   Serial.print(F("Number of loads: "));
   Serial.println(NO_OF_LOADS);
   Serial.println(F("---------------------------------------"));
-  
+
   // Initialize RF module
   if (!radio.initialize(FREQUENCY, MY_NODE_ID, NETWORK_ID))
   {
     Serial.println(F("RFM69 initialization FAILED!"));
     while (1); // Halt
   }
-  
+
   // Optional: set high power mode for RFM69HW
   if (IS_RFM69HW)
   {
     radio.setHighPower();
   }
-  
+
   // Optional: enable encryption (must match transmitter)
   // radio.encrypt("sampleEncryptKey");
-  
+
   Serial.println(F("RF module initialized"));
   Serial.println(F("Waiting for commands..."));
   Serial.println();
-  
+
   lastMessageTime = millis();
 }
 
@@ -149,25 +153,25 @@ void loop()
     {
       // Copy received data
       memcpy(&receivedData, (void*)radio.DATA, sizeof(receivedData));
-      
+
       // Send ACK if requested
       if (radio.ACKRequested())
       {
         radio.sendACK();
       }
-      
+
       // Update loads based on received bitmask
       updateLoads(receivedData.loadBitmask);
-      
+
       // Update RF status
       lastMessageTime = millis();
-      
+
       if (rfStatus != RF_OK)
       {
         rfStatus = RF_OK;
         Serial.println(F("RF link restored"));
       }
-      
+
       // Debug output
       Serial.print(F("Received: 0b"));
       Serial.print(receivedData.loadBitmask, BIN);
@@ -183,7 +187,7 @@ void loop()
       Serial.println();
     }
   }
-  
+
   // Check for RF timeout
   if ((millis() - lastMessageTime) > RF_TIMEOUT_MS)
   {
@@ -191,7 +195,7 @@ void loop()
     {
       rfStatus = RF_LOST;
       Serial.println(F("RF link LOST - turning all loads OFF"));
-      
+
       // Safety: Turn all loads OFF when RF link is lost
       for (uint8_t i = 0; i < NO_OF_LOADS; ++i)
       {
@@ -199,10 +203,10 @@ void loop()
       }
     }
   }
-  
+
   // Update status LED
   updateStatusLED();
-  
+
   // Toggle watchdog
   if ((millis() - lastWatchdogToggle) > WATCHDOG_INTERVAL_MS)
   {
@@ -231,7 +235,7 @@ void updateLoads(uint8_t bitmask)
 void updateStatusLED()
 {
   if (!STATUS_LED_PRESENT) return;
-  
+
   if (rfStatus == RF_OK)
   {
     // RF OK - LED on steady (or green if using bi-color LED)
