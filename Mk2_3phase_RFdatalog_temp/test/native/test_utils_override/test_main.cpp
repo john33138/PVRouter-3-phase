@@ -270,6 +270,193 @@ void test_OverridePins_many_entries(void)
 }
 
 // ============================================================================
+// Tests for Remote Load Support (REMOTE_PIN_BASE = 128)
+// ============================================================================
+
+// Helper macro for remote load pins
+#define REMOTE_LOAD(n) (REMOTE_PIN_BASE + (n))
+
+void test_PinList_toRemoteBitmask_empty(void)
+{
+  constexpr PinList< 4 > list{};
+  TEST_ASSERT_EQUAL(0, list.toRemoteBitmask());
+}
+
+void test_PinList_toRemoteBitmask_local_only(void)
+{
+  // Local pins should not appear in remote bitmask
+  constexpr PinList< 4 > list{ 2, 5, 8 };
+  TEST_ASSERT_EQUAL(0, list.toRemoteBitmask());
+}
+
+void test_PinList_toRemoteBitmask_single_remote(void)
+{
+  constexpr PinList< 4 > list{ REMOTE_LOAD(0) };  // Remote load 0 = pin 128
+  TEST_ASSERT_EQUAL(1U << 0, list.toRemoteBitmask());
+}
+
+void test_PinList_toRemoteBitmask_multiple_remote(void)
+{
+  constexpr PinList< 4 > list{ REMOTE_LOAD(0), REMOTE_LOAD(2), REMOTE_LOAD(5) };
+  TEST_ASSERT_EQUAL((1U << 0) | (1U << 2) | (1U << 5), list.toRemoteBitmask());
+}
+
+void test_PinList_toRemoteBitmask_mixed(void)
+{
+  // Mix of local (5, 8) and remote (0, 3) pins
+  constexpr PinList< 6 > list{ 5, REMOTE_LOAD(0), 8, REMOTE_LOAD(3) };
+  TEST_ASSERT_EQUAL((1U << 5) | (1U << 8), list.toLocalBitmask());
+  TEST_ASSERT_EQUAL((1U << 0) | (1U << 3), list.toRemoteBitmask());
+}
+
+void test_PinList_from_uint32_bitmask_local_only(void)
+{
+  // Lower 16 bits only (local pins 2, 5, 7)
+  constexpr uint32_t bitmask = 0b10100100;
+  constexpr PinList< 8 > list{ bitmask };
+  TEST_ASSERT_EQUAL(3, list.count);
+  TEST_ASSERT_EQUAL(0b10100100, list.toLocalBitmask());
+  TEST_ASSERT_EQUAL(0, list.toRemoteBitmask());
+}
+
+void test_PinList_from_uint32_bitmask_remote_only(void)
+{
+  // Upper 16 bits only (remote loads 0, 2, 4)
+  constexpr uint32_t bitmask = (1UL << 16) | (1UL << 18) | (1UL << 20);
+  constexpr PinList< 8 > list{ bitmask };
+  TEST_ASSERT_EQUAL(3, list.count);
+  TEST_ASSERT_EQUAL(0, list.toLocalBitmask());
+  TEST_ASSERT_EQUAL((1U << 0) | (1U << 2) | (1U << 4), list.toRemoteBitmask());
+}
+
+void test_PinList_from_uint32_bitmask_mixed(void)
+{
+  // Local pins 4, 6 + Remote loads 1, 3
+  constexpr uint32_t bitmask = (1UL << 4) | (1UL << 6) | (1UL << 17) | (1UL << 19);
+  constexpr PinList< 8 > list{ bitmask };
+  TEST_ASSERT_EQUAL(4, list.count);
+  TEST_ASSERT_EQUAL((1U << 4) | (1U << 6), list.toLocalBitmask());
+  TEST_ASSERT_EQUAL((1U << 1) | (1U << 3), list.toRemoteBitmask());
+}
+
+// ============================================================================
+// Tests for KeyIndexPair with Remote Loads
+// ============================================================================
+
+void test_KeyIndexPair_getRemoteBitmask_empty(void)
+{
+  constexpr PinList< 4 > list{ 4, 5, 6 };  // Local only
+  constexpr KeyIndexPair< 4 > pair{ 2, list };
+  TEST_ASSERT_EQUAL(0, pair.getRemoteBitmask());
+}
+
+void test_KeyIndexPair_getRemoteBitmask_remote_only(void)
+{
+  constexpr PinList< 4 > list{ REMOTE_LOAD(0), REMOTE_LOAD(2) };
+  constexpr KeyIndexPair< 4 > pair{ 5, list };
+  TEST_ASSERT_EQUAL(0, pair.getLocalBitmask());
+  TEST_ASSERT_EQUAL((1U << 0) | (1U << 2), pair.getRemoteBitmask());
+}
+
+void test_KeyIndexPair_getRemoteBitmask_mixed(void)
+{
+  constexpr PinList< 6 > list{ 4, 5, REMOTE_LOAD(1), REMOTE_LOAD(3) };
+  constexpr KeyIndexPair< 6 > pair{ 10, list };
+  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5), pair.getLocalBitmask());
+  TEST_ASSERT_EQUAL((1U << 1) | (1U << 3), pair.getRemoteBitmask());
+}
+
+// ============================================================================
+// Tests for OverridePins with Remote Loads
+// ============================================================================
+
+void test_OverridePins_getRemoteBitmask_local_only(void)
+{
+  constexpr OverridePins pins{
+    { KeyIndexPair< 4 >{ 9, { 2, 3, 4 } } }
+  };
+  TEST_ASSERT_EQUAL(0, pins.getRemoteBitmask(0));
+}
+
+void test_OverridePins_getRemoteBitmask_remote_only(void)
+{
+  constexpr OverridePins pins{
+    { KeyIndexPair< 4 >{ 9, { REMOTE_LOAD(0), REMOTE_LOAD(2) } } }
+  };
+  TEST_ASSERT_EQUAL(0, pins.getLocalBitmask(0));
+  TEST_ASSERT_EQUAL((1U << 0) | (1U << 2), pins.getRemoteBitmask(0));
+}
+
+void test_OverridePins_getRemoteBitmask_mixed(void)
+{
+  constexpr OverridePins pins{
+    { KeyIndexPair< 6 >{ 9, { 4, 5, REMOTE_LOAD(1), REMOTE_LOAD(3) } } }
+  };
+  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5), pins.getLocalBitmask(0));
+  TEST_ASSERT_EQUAL((1U << 1) | (1U << 3), pins.getRemoteBitmask(0));
+}
+
+void test_OverridePins_getRemoteBitmask_out_of_bounds(void)
+{
+  constexpr OverridePins pins{
+    { KeyIndexPair< 4 >{ 10, { REMOTE_LOAD(2) } } }
+  };
+  TEST_ASSERT_EQUAL(0, pins.getRemoteBitmask(1));
+  TEST_ASSERT_EQUAL(0, pins.getRemoteBitmask(99));
+}
+
+void test_OverridePins_findRemoteBitmask_found(void)
+{
+  constexpr OverridePins pins{
+    { KeyIndexPair< 4 >{ 10, { REMOTE_LOAD(0), REMOTE_LOAD(1) } },
+      KeyIndexPair< 4 >{ 11, { REMOTE_LOAD(2), REMOTE_LOAD(3) } },
+      KeyIndexPair< 4 >{ 12, { REMOTE_LOAD(4), REMOTE_LOAD(5) } } }
+  };
+  TEST_ASSERT_EQUAL((1U << 0) | (1U << 1), pins.findRemoteBitmask(10));
+  TEST_ASSERT_EQUAL((1U << 2) | (1U << 3), pins.findRemoteBitmask(11));
+  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5), pins.findRemoteBitmask(12));
+}
+
+void test_OverridePins_findRemoteBitmask_not_found(void)
+{
+  constexpr OverridePins pins{
+    { KeyIndexPair< 4 >{ 10, { REMOTE_LOAD(0) } } }
+  };
+  TEST_ASSERT_EQUAL(0, pins.findRemoteBitmask(99));
+  TEST_ASSERT_EQUAL(0, pins.findRemoteBitmask(0));
+}
+
+void test_OverridePins_multiple_entries_mixed(void)
+{
+  // Real-world scenario: some override pins control local loads, some control remote
+  constexpr OverridePins pins{
+    { KeyIndexPair< 6 >{ 2, { 4, 5 } },                            // Local only
+      KeyIndexPair< 6 >{ 3, { REMOTE_LOAD(0), REMOTE_LOAD(1) } },  // Remote only
+      KeyIndexPair< 6 >{ 4, { 6, 7, REMOTE_LOAD(2) } } }           // Mixed
+  };
+
+  TEST_ASSERT_EQUAL(3, pins.size());
+
+  // Entry 0: local only
+  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5), pins.getLocalBitmask(0));
+  TEST_ASSERT_EQUAL(0, pins.getRemoteBitmask(0));
+
+  // Entry 1: remote only
+  TEST_ASSERT_EQUAL(0, pins.getLocalBitmask(1));
+  TEST_ASSERT_EQUAL((1U << 0) | (1U << 1), pins.getRemoteBitmask(1));
+
+  // Entry 2: mixed
+  TEST_ASSERT_EQUAL((1U << 6) | (1U << 7), pins.getLocalBitmask(2));
+  TEST_ASSERT_EQUAL(1U << 2, pins.getRemoteBitmask(2));
+
+  // Find by pin
+  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5), pins.findLocalBitmask(2));
+  TEST_ASSERT_EQUAL(0, pins.findRemoteBitmask(2));
+  TEST_ASSERT_EQUAL(0, pins.findLocalBitmask(3));
+  TEST_ASSERT_EQUAL((1U << 0) | (1U << 1), pins.findRemoteBitmask(3));
+}
+
+// ============================================================================
 // Main
 // ============================================================================
 
@@ -314,6 +501,30 @@ int main(void)
   RUN_TEST(test_OverridePins_findLocalBitmask_not_found);
   RUN_TEST(test_OverridePins_with_bitmask_constructor);
   RUN_TEST(test_OverridePins_many_entries);
+
+  // PinList remote bitmask tests
+  RUN_TEST(test_PinList_toRemoteBitmask_empty);
+  RUN_TEST(test_PinList_toRemoteBitmask_local_only);
+  RUN_TEST(test_PinList_toRemoteBitmask_single_remote);
+  RUN_TEST(test_PinList_toRemoteBitmask_multiple_remote);
+  RUN_TEST(test_PinList_toRemoteBitmask_mixed);
+  RUN_TEST(test_PinList_from_uint32_bitmask_local_only);
+  RUN_TEST(test_PinList_from_uint32_bitmask_remote_only);
+  RUN_TEST(test_PinList_from_uint32_bitmask_mixed);
+
+  // KeyIndexPair remote bitmask tests
+  RUN_TEST(test_KeyIndexPair_getRemoteBitmask_empty);
+  RUN_TEST(test_KeyIndexPair_getRemoteBitmask_remote_only);
+  RUN_TEST(test_KeyIndexPair_getRemoteBitmask_mixed);
+
+  // OverridePins remote bitmask tests
+  RUN_TEST(test_OverridePins_getRemoteBitmask_local_only);
+  RUN_TEST(test_OverridePins_getRemoteBitmask_remote_only);
+  RUN_TEST(test_OverridePins_getRemoteBitmask_mixed);
+  RUN_TEST(test_OverridePins_getRemoteBitmask_out_of_bounds);
+  RUN_TEST(test_OverridePins_findRemoteBitmask_found);
+  RUN_TEST(test_OverridePins_findRemoteBitmask_not_found);
+  RUN_TEST(test_OverridePins_multiple_entries_mixed);
 
   return UNITY_END();
 }

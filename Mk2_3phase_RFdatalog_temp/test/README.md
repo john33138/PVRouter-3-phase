@@ -60,7 +60,7 @@ Native tests run on the host machine without Arduino hardware. They test platfor
 
 **File:** `native/test_utils_override/test_main.cpp`
 
-**Purpose:** Tests the override pin system that allows external control of loads via GPIO pins.
+**Purpose:** Tests the override pin system that allows external control of loads via GPIO pins, including support for remote loads.
 
 | Test | Description |
 |------|-------------|
@@ -68,8 +68,15 @@ Native tests run on the host machine without Arduino hardware. They test platfor
 | `test_are_pins_valid_*` | Validates pin numbers (rejects 0, 1, 14+) |
 | `test_PinList_*` | Tests PinList class for storing pin configurations |
 | `test_PinList_toLocalBitmask` | Tests bitmask generation for local loads |
+| `test_PinList_toRemoteBitmask_*` | Tests bitmask generation for remote loads (virtual pins ≥128) |
+| `test_PinList_from_uint32_bitmask_*` | Tests construction from combined local+remote bitmask |
 | `test_KeyIndexPair_*` | Tests override pin/load mapping pairs |
-| `test_KeyIndexPair_getLocalBitmask` | Tests bitmask extraction from key-index pairs |
+| `test_KeyIndexPair_getLocalBitmask` | Tests local bitmask extraction from key-index pairs |
+| `test_KeyIndexPair_getRemoteBitmask_*` | Tests remote bitmask extraction from key-index pairs |
+| `test_OverridePins_*` | Tests OverridePins class for managing override configurations |
+| `test_OverridePins_getRemoteBitmask_*` | Tests remote bitmask retrieval by index |
+| `test_OverridePins_findRemoteBitmask_*` | Tests remote bitmask lookup by pin number |
+| `test_OverridePins_multiple_entries_mixed` | Tests real-world scenario with local and remote loads |
 
 ---
 
