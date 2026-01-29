@@ -10,27 +10,11 @@
 #include <cstdint>
 #include <climits>
 
+#include "utils_bits.h"
+
 // ============================================================================
 // Minimal stubs replicating relay logic from utils_relay.h
 // ============================================================================
-
-template< typename T >
-constexpr void bit_set(T& value, uint8_t bit)
-{
-  value |= (static_cast< T >(1) << bit);
-}
-
-template< typename T >
-constexpr void bit_clear(T& value, uint8_t bit)
-{
-  value &= ~(static_cast< T >(1) << bit);
-}
-
-template< typename T >
-constexpr bool bit_read(const T& value, uint8_t bit)
-{
-  return (value >> bit) & 1;
-}
 
 // EWMA stub - simplified version that just tracks average
 template< uint16_t D >

@@ -8,15 +8,7 @@
 #include <unity.h>
 #include <cstdint>
 
-// ============================================================================
-// Minimal mocks for native testing
-// ============================================================================
-
-template< typename T >
-constexpr void bit_set(T& value, uint8_t bit)
-{
-  value |= (static_cast< T >(1) << bit);
-}
+#include "utils_bits.h"
 
 // ============================================================================
 // Test-specific configuration

@@ -9,6 +9,8 @@
 #include <unity.h>
 #include <cstdint>
 
+#include "utils_bits.h"
+
 // ============================================================================
 // Test-specific configuration with RELAY_DIVERSION = false
 // ============================================================================
@@ -48,13 +50,6 @@ inline constexpr RelayEngine< 0 > relays{};      // Empty relays
 // ============================================================================
 // Inline the helper functions here (same logic as utils_override_helpers.h)
 // ============================================================================
-
-// Mock bit_set
-template< typename T >
-constexpr void bit_set(T& value, uint8_t bit)
-{
-  value |= (static_cast< T >(1) << bit);
-}
 
 constexpr uint8_t LOAD(uint8_t loadNum)
 {
