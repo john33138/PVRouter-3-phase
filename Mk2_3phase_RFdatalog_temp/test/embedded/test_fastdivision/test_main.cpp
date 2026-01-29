@@ -10,6 +10,7 @@
 #include <unity.h>
 
 #include "FastDivision.h"
+#include "FastDivision.cpp"  // Include implementation for linking
 
 void setUp(void)
 {
