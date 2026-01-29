@@ -40,13 +40,13 @@ inline constexpr SerialOutputType SERIAL_OUTPUT_TYPE = SerialOutputType::HumanRe
 //
 inline constexpr uint8_t NO_OF_DUMPLOADS{ 3 }; /**< TOTAL number of dump loads (local + remote) */
 
-inline constexpr uint8_t NO_OF_REMOTE_LOADS{ 0 }; /**< number of remote loads controlled via RF (0 = disabled) */
+inline constexpr uint8_t NO_OF_REMOTE_LOADS{ 2 }; /**< number of remote loads controlled via RF (0 = disabled) */
 
 // Feature toggles - Basic setup without advanced features
 inline constexpr bool EMONESP_CONTROL{ false };
 inline constexpr bool DIVERSION_PIN_PRESENT{ false };                   /**< set it to 'true' if you want to control diversion ON/OFF */
 inline constexpr RotationModes PRIORITY_ROTATION{ RotationModes::OFF }; /**< set it to 'OFF/AUTO/PIN' if you want manual/automatic rotation of priorities */
-inline constexpr bool OVERRIDE_PIN_PRESENT{ true };                     /**< set it to 'true' if there's a override pin */
+inline constexpr bool OVERRIDE_PIN_PRESENT{ false };                    /**< set it to 'true' if there's a override pin */
 
 inline constexpr bool WATCHDOG_PIN_PRESENT{ false }; /**< set it to 'true' if there's a watch led */
 inline constexpr bool RELAY_DIVERSION{ false };      /**< set it to 'true' if a relay is used for diversion */
@@ -95,11 +95,11 @@ inline constexpr bool REMOTE_LOADS_PRESENT{ NO_OF_REMOTE_LOADS != 0 }; /**< auto
 // counterpart is properly configured to send the appropriate signals.
 
 // Physical pin assignments for LOCAL loads only (remote loads are controlled via RF)
-inline constexpr uint8_t physicalLoadPin[NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS]{ 5, 6, 7 }; /**< Pins for local TRIAC outputs */
+inline constexpr uint8_t physicalLoadPin[NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS]{ 5 }; /**< Pins for local TRIAC outputs */
 
 // Optional status LED pins for REMOTE loads (set to unused_pin if not needed)
-// Note: Array size must match NO_OF_REMOTE_LOADS (empty array when NO_OF_REMOTE_LOADS is 0)
-inline constexpr uint8_t remoteLoadStatusLED[NO_OF_REMOTE_LOADS > 0 ? NO_OF_REMOTE_LOADS : 1]{}; /**< Optional LEDs to show remote load status */
+// Note: Array size must match NO_OF_REMOTE_LOADS
+inline constexpr uint8_t remoteLoadStatusLED[NO_OF_REMOTE_LOADS > 0 ? NO_OF_REMOTE_LOADS : 1]{ unused_pin, unused_pin }; /**< Optional LEDs to show remote load status */
 
 // Load priority order at startup (array index = priority, 0 = highest)
 // Load indices: 0 to (NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS - 1) are local loads,
@@ -147,12 +147,26 @@ inline constexpr RelayEngine relays{ MINUTES(RELAY_FILTER_DELAY),
 // This is an example of override pin configuration.
 // You can modify the pin numbers and associated loads/relays as needed.
 // Ensure that the pins used do not conflict with other functionalities in your setup.
-// This example does not make any sense, that's just to show how to use the class OverridePins
-// inline constexpr OverridePins overridePins{ { { 3, { RELAY(1), LOAD(1) } },
-//                                               { 4, ALL_LOADS() },
-//                                               { 11, { 1, LOAD(1), LOAD(2) } },
-//                                               { 12, { RELAY(0), 9, RELAY(2) } },
-//                                               { 13, ALL_LOADS_AND_RELAYS() } } }; /**< list of override pin/loads-relays pairs */
+//
+// Helper functions available:
+//   LOCAL_LOAD(n)     - Returns physical pin for local load n
+//   REMOTE_LOAD(n)    - Returns virtual pin for remote load n (>= 128)
+//   LOAD(n)           - Returns pin for any load (physical for local, virtual for remote)
+//   ALL_LOCAL_LOADS() - uint32_t bitmask, lower 16 bits for local load pins
+//   ALL_REMOTE_LOADS()- uint32_t bitmask, upper 16 bits for remote loads (bit 16 = remote 0)
+//   ALL_LOADS()       - uint32_t combining local (lower 16 bits) and remote (upper 16 bits)
+//   RELAY(n)          - Returns pin for relay n
+//   ALL_RELAYS()      - uint32_t bitmask, lower 16 bits for relay pins
+//   ALL_LOADS_AND_RELAYS() - uint32_t combining all loads and relays
+//
+// Example configurations:
+// inline constexpr OverridePins overridePins{
+//   { { 4, ALL_LOADS() },                                  // Control all loads (local + remote)
+//     { 5, ALL_LOCAL_LOADS() },                            // Control only local loads
+//     { 6, ALL_REMOTE_LOADS() },                           // Control only remote loads
+//     { 7, { LOCAL_LOAD(0), REMOTE_LOAD(1) } },            // Mixed: local load 0 + remote load 1
+//     { 8, { LOAD(0), LOAD(1), LOAD(2), LOAD(3) } },       // Using LOAD() for any load index
+//     { 9, ALL_LOADS_AND_RELAYS() } } };                   // All loads and relays
 
 inline constexpr OverridePins overridePins{ { { 4, ALL_LOADS() } } }; /**< list of override pin/loads-relays pairs */
 
