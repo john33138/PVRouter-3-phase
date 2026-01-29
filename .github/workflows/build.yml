@@ -1,5 +1,5 @@
 # CI workflow for PVRouter-3-phase
-# Runs build and tests on push/PR to main and dev branches
+# Runs build and tests on all branches and PRs
 
 name: CI
 permissions:
@@ -8,7 +8,7 @@ permissions:
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ '**' ]
   pull_request:
     branches: [ main, dev ]
 
