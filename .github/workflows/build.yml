@@ -145,7 +145,7 @@ jobs:
         with:
           token: ${{ secrets.WOKWI_CLI_TOKEN }}
           path: ${{ env.PROJECT_DIR }}/test/embedded/${{ matrix.test }}
-          diagram_file: ${{ env.PROJECT_DIR }}/test/embedded/diagram.json
+          diagram_file: ../diagram.json
           timeout: 60000
           expect_text: 'OK'
           fail_text: 'FAIL'
