@@ -81,7 +81,7 @@ void test_PinList_default_constructor(void)
 {
   constexpr PinList< 4 > list{};
   TEST_ASSERT_EQUAL(0, list.count);
-  TEST_ASSERT_EQUAL(0, list.toBitmask());
+  TEST_ASSERT_EQUAL(0, list.toLocalBitmask());
 }
 
 void test_PinList_variadic_constructor(void)
@@ -98,21 +98,21 @@ void test_PinList_single_pin(void)
   constexpr PinList< 4 > list{ 7 };
   TEST_ASSERT_EQUAL(1, list.count);
   TEST_ASSERT_EQUAL(7, list.pins[0]);
-  TEST_ASSERT_EQUAL(1U << 7, list.toBitmask());
+  TEST_ASSERT_EQUAL(1U << 7, list.toLocalBitmask());
 }
 
 void test_PinList_max_pins(void)
 {
   constexpr PinList< 4 > list{ 2, 5, 8, 11 };
   TEST_ASSERT_EQUAL(4, list.count);
-  TEST_ASSERT_EQUAL((1U << 2) | (1U << 5) | (1U << 8) | (1U << 11), list.toBitmask());
+  TEST_ASSERT_EQUAL((1U << 2) | (1U << 5) | (1U << 8) | (1U << 11), list.toLocalBitmask());
 }
 
-void test_PinList_toBitmask(void)
+void test_PinList_toLocalBitmask(void)
 {
   constexpr PinList< 4 > list{ 2, 5, 8 };
   constexpr uint16_t expected = (1U << 2) | (1U << 5) | (1U << 8);
-  TEST_ASSERT_EQUAL(expected, list.toBitmask());
+  TEST_ASSERT_EQUAL(expected, list.toLocalBitmask());
 }
 
 void test_PinList_from_bitmask(void)
@@ -122,21 +122,21 @@ void test_PinList_from_bitmask(void)
   TEST_ASSERT_EQUAL(2, list.pins[0]);
   TEST_ASSERT_EQUAL(5, list.pins[1]);
   TEST_ASSERT_EQUAL(7, list.pins[2]);
-  TEST_ASSERT_EQUAL(0b10100100, list.toBitmask());
+  TEST_ASSERT_EQUAL(0b10100100, list.toLocalBitmask());
 }
 
 void test_PinList_from_bitmask_empty(void)
 {
   constexpr PinList< 4 > list{ static_cast< uint16_t >(0) };
   TEST_ASSERT_EQUAL(0, list.count);
-  TEST_ASSERT_EQUAL(0, list.toBitmask());
+  TEST_ASSERT_EQUAL(0, list.toLocalBitmask());
 }
 
 void test_PinList_from_bitmask_full(void)
 {
   constexpr PinList< 16 > list{ static_cast< uint16_t >(0xFFFF) };
   TEST_ASSERT_EQUAL(16, list.count);
-  TEST_ASSERT_EQUAL(0xFFFF, list.toBitmask());
+  TEST_ASSERT_EQUAL(0xFFFF, list.toLocalBitmask());
 }
 
 // ============================================================================
@@ -151,26 +151,26 @@ void test_KeyIndexPair_construction(void)
   TEST_ASSERT_EQUAL(2, pair.pin);
 }
 
-void test_KeyIndexPair_getBitmask(void)
+void test_KeyIndexPair_getLocalBitmask(void)
 {
   constexpr PinList< 4 > list{ 4, 5, 6 };
   constexpr KeyIndexPair< 4 > pair{ 2, list };
 
-  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5) | (1U << 6), pair.getBitmask());
+  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5) | (1U << 6), pair.getLocalBitmask());
 }
 
 void test_KeyIndexPair_single_pin(void)
 {
   constexpr KeyIndexPair< 4 > pair{ 10, PinList< 4 >{ 7 } };
   TEST_ASSERT_EQUAL(10, pair.pin);
-  TEST_ASSERT_EQUAL(1U << 7, pair.getBitmask());
+  TEST_ASSERT_EQUAL(1U << 7, pair.getLocalBitmask());
 }
 
 void test_KeyIndexPair_from_bitmask(void)
 {
   constexpr KeyIndexPair< 8 > pair{ 3, PinList< 8 >{ static_cast< uint16_t >(0b11110000) } };
   TEST_ASSERT_EQUAL(3, pair.pin);
-  TEST_ASSERT_EQUAL(0b11110000, pair.getBitmask());
+  TEST_ASSERT_EQUAL(0b11110000, pair.getLocalBitmask());
 }
 
 // ============================================================================
@@ -185,7 +185,7 @@ void test_OverridePins_single_entry(void)
 
   TEST_ASSERT_EQUAL(1, pins.size());
   TEST_ASSERT_EQUAL(9, pins.getPin(0));
-  TEST_ASSERT_EQUAL((1U << 2) | (1U << 3) | (1U << 4), pins.getBitmask(0));
+  TEST_ASSERT_EQUAL((1U << 2) | (1U << 3) | (1U << 4), pins.getLocalBitmask(0));
 }
 
 void test_OverridePins_multiple_entries(void)
@@ -198,8 +198,8 @@ void test_OverridePins_multiple_entries(void)
   TEST_ASSERT_EQUAL(2, pins.size());
   TEST_ASSERT_EQUAL(2, pins.getPin(0));
   TEST_ASSERT_EQUAL(3, pins.getPin(1));
-  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5), pins.getBitmask(0));
-  TEST_ASSERT_EQUAL((1U << 6) | (1U << 7), pins.getBitmask(1));
+  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5), pins.getLocalBitmask(0));
+  TEST_ASSERT_EQUAL((1U << 6) | (1U << 7), pins.getLocalBitmask(1));
 }
 
 void test_OverridePins_getPin_out_of_bounds(void)
@@ -212,17 +212,17 @@ void test_OverridePins_getPin_out_of_bounds(void)
   TEST_ASSERT_EQUAL(0, pins.getPin(99));
 }
 
-void test_OverridePins_getBitmask_out_of_bounds(void)
+void test_OverridePins_getLocalBitmask_out_of_bounds(void)
 {
   constexpr OverridePins pins{
     { KeyIndexPair< 4 >{ 10, { 4, 5 } } }
   };
 
-  TEST_ASSERT_EQUAL(0, pins.getBitmask(1));
-  TEST_ASSERT_EQUAL(0, pins.getBitmask(99));
+  TEST_ASSERT_EQUAL(0, pins.getLocalBitmask(1));
+  TEST_ASSERT_EQUAL(0, pins.getLocalBitmask(99));
 }
 
-void test_OverridePins_findBitmask_found(void)
+void test_OverridePins_findLocalBitmask_found(void)
 {
   constexpr OverridePins pins{
     { KeyIndexPair< 4 >{ 10, { 4, 5 } },
@@ -230,19 +230,19 @@ void test_OverridePins_findBitmask_found(void)
       KeyIndexPair< 4 >{ 12, { 8, 9 } } }
   };
 
-  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5), pins.findBitmask(10));
-  TEST_ASSERT_EQUAL((1U << 6) | (1U << 7), pins.findBitmask(11));
-  TEST_ASSERT_EQUAL((1U << 8) | (1U << 9), pins.findBitmask(12));
+  TEST_ASSERT_EQUAL((1U << 4) | (1U << 5), pins.findLocalBitmask(10));
+  TEST_ASSERT_EQUAL((1U << 6) | (1U << 7), pins.findLocalBitmask(11));
+  TEST_ASSERT_EQUAL((1U << 8) | (1U << 9), pins.findLocalBitmask(12));
 }
 
-void test_OverridePins_findBitmask_not_found(void)
+void test_OverridePins_findLocalBitmask_not_found(void)
 {
   constexpr OverridePins pins{
     { KeyIndexPair< 4 >{ 10, { 4, 5 } } }
   };
 
-  TEST_ASSERT_EQUAL(0, pins.findBitmask(99));
-  TEST_ASSERT_EQUAL(0, pins.findBitmask(0));
+  TEST_ASSERT_EQUAL(0, pins.findLocalBitmask(99));
+  TEST_ASSERT_EQUAL(0, pins.findLocalBitmask(0));
 }
 
 void test_OverridePins_with_bitmask_constructor(void)
@@ -253,7 +253,7 @@ void test_OverridePins_with_bitmask_constructor(void)
   };
 
   TEST_ASSERT_EQUAL(5, pins.getPin(0));
-  TEST_ASSERT_EQUAL(0b11100, pins.getBitmask(0));
+  TEST_ASSERT_EQUAL(0b11100, pins.getLocalBitmask(0));
 }
 
 void test_OverridePins_many_entries(void)
@@ -266,7 +266,7 @@ void test_OverridePins_many_entries(void)
   };
 
   TEST_ASSERT_EQUAL(4, pins.size());
-  TEST_ASSERT_EQUAL((1U << 11) | (1U << 12), pins.findBitmask(5));
+  TEST_ASSERT_EQUAL((1U << 11) | (1U << 12), pins.findLocalBitmask(5));
 }
 
 // ============================================================================
@@ -294,14 +294,14 @@ int main(void)
   RUN_TEST(test_PinList_variadic_constructor);
   RUN_TEST(test_PinList_single_pin);
   RUN_TEST(test_PinList_max_pins);
-  RUN_TEST(test_PinList_toBitmask);
+  RUN_TEST(test_PinList_toLocalBitmask);
   RUN_TEST(test_PinList_from_bitmask);
   RUN_TEST(test_PinList_from_bitmask_empty);
   RUN_TEST(test_PinList_from_bitmask_full);
 
   // KeyIndexPair tests
   RUN_TEST(test_KeyIndexPair_construction);
-  RUN_TEST(test_KeyIndexPair_getBitmask);
+  RUN_TEST(test_KeyIndexPair_getLocalBitmask);
   RUN_TEST(test_KeyIndexPair_single_pin);
   RUN_TEST(test_KeyIndexPair_from_bitmask);
 
@@ -309,9 +309,9 @@ int main(void)
   RUN_TEST(test_OverridePins_single_entry);
   RUN_TEST(test_OverridePins_multiple_entries);
   RUN_TEST(test_OverridePins_getPin_out_of_bounds);
-  RUN_TEST(test_OverridePins_getBitmask_out_of_bounds);
-  RUN_TEST(test_OverridePins_findBitmask_found);
-  RUN_TEST(test_OverridePins_findBitmask_not_found);
+  RUN_TEST(test_OverridePins_getLocalBitmask_out_of_bounds);
+  RUN_TEST(test_OverridePins_findLocalBitmask_found);
+  RUN_TEST(test_OverridePins_findLocalBitmask_not_found);
   RUN_TEST(test_OverridePins_with_bitmask_constructor);
   RUN_TEST(test_OverridePins_many_entries);
 

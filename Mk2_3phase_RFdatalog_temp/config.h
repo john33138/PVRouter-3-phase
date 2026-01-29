@@ -15,14 +15,13 @@
  * - 2 TRIAC outputs for dump loads
  *
  * @version 1.0
- * @date 2026-01-28
+ * @date 2026-01-29
  */
 
 #ifndef CONFIG_H
 #define CONFIG_H
 
 //--------------------------------------------------------------------------------------------------
-//#define RF_PRESENT  /**< this line must be commented out if the RFM12B module is not present */
 #define ENABLE_DEBUG /**< enable this line to include debugging print statements */
 //--------------------------------------------------------------------------------------------------
 
@@ -39,7 +38,9 @@ inline constexpr SerialOutputType SERIAL_OUTPUT_TYPE = SerialOutputType::HumanRe
 //--------------------------------------------------------------------------------------------------
 // Basic Configuration
 //
-inline constexpr uint8_t NO_OF_DUMPLOADS{ 3 }; /**< number of dump loads connected to the diverter */
+inline constexpr uint8_t NO_OF_DUMPLOADS{ 3 }; /**< TOTAL number of dump loads (local + remote) */
+
+inline constexpr uint8_t NO_OF_REMOTE_LOADS{ 0 }; /**< number of remote loads controlled via RF (0 = disabled) */
 
 // Feature toggles - Basic setup without advanced features
 inline constexpr bool EMONESP_CONTROL{ false };
@@ -51,7 +52,11 @@ inline constexpr bool WATCHDOG_PIN_PRESENT{ false }; /**< set it to 'true' if th
 inline constexpr bool RELAY_DIVERSION{ false };      /**< set it to 'true' if a relay is used for diversion */
 inline constexpr bool DUAL_TARIFF{ false };          /**< set it to 'true' if there's a dual tariff each day AND the router is connected to the billing meter */
 inline constexpr bool TEMP_SENSOR_PRESENT{ false };  /**< set it to 'true' if temperature sensing is needed */
+inline constexpr bool RF_LOGGING_PRESENT{ false };   /**< set it to 'true' if RF data logging is needed */
 
+inline constexpr bool REMOTE_LOADS_PRESENT{ NO_OF_REMOTE_LOADS != 0 }; /**< automatically true if remote loads configured */
+
+#include "remote_loads.h"
 #include "utils_temp.h"
 
 // ----------- Pinout Assignments -----------
@@ -89,8 +94,17 @@ inline constexpr bool TEMP_SENSOR_PRESENT{ false };  /**< set it to 'true' if te
 // Note: When using these pins for Home Assistant integration, ensure the ESP32
 // counterpart is properly configured to send the appropriate signals.
 
-inline constexpr uint8_t physicalLoadPin[NO_OF_DUMPLOADS]{ 5, 6, 7 };         /**< for 3-phase PCB, Load #1/#2/#3 (Rev 2 PCB) */
-inline constexpr uint8_t loadPrioritiesAtStartup[NO_OF_DUMPLOADS]{ 0, 1, 2 }; /**< load priorities and states at startup */
+// Physical pin assignments for LOCAL loads only (remote loads are controlled via RF)
+inline constexpr uint8_t physicalLoadPin[NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS]{ 5, 6, 7 }; /**< Pins for local TRIAC outputs */
+
+// Optional status LED pins for REMOTE loads (set to unused_pin if not needed)
+// Note: Array size must match NO_OF_REMOTE_LOADS (empty array when NO_OF_REMOTE_LOADS is 0)
+inline constexpr uint8_t remoteLoadStatusLED[NO_OF_REMOTE_LOADS > 0 ? NO_OF_REMOTE_LOADS : 1]{}; /**< Optional LEDs to show remote load status */
+
+// Load priority order at startup (array index = priority, 0 = highest)
+// Load indices: 0 to (NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS - 1) are local loads,
+//               (NO_OF_DUMPLOADS - NO_OF_REMOTE_LOADS) to (NO_OF_DUMPLOADS - 1) are remote loads
+inline constexpr uint8_t loadPrioritiesAtStartup[NO_OF_DUMPLOADS]{ 0, 1, 2 }; /**< load priorities at startup (0=highest) */
 
 // Set the value to 'unused_pin' when the pin is not needed (feature deactivated)
 inline constexpr uint8_t dualTariffPin{ unused_pin }; /**< for 3-phase PCB, off-peak trigger */
@@ -142,8 +156,8 @@ inline constexpr RelayEngine relays{ MINUTES(RELAY_FILTER_DELAY),
 
 inline constexpr OverridePins overridePins{ { { 4, ALL_LOADS() } } }; /**< list of override pin/loads-relays pairs */
 
-inline constexpr uint8_t ul_OFF_PEAK_DURATION{ 8 };                        /**< Duration of the off-peak period in hours */
-inline constexpr pairForceLoad rg_ForceLoad[NO_OF_DUMPLOADS]{ { -3, 2 } }; /**< force config for load #1 ONLY for dual tariff */
+inline constexpr uint8_t ul_OFF_PEAK_DURATION{ 8 };             /**< Duration of the off-peak period in hours */
+inline constexpr pairForceLoad rg_ForceLoad[NO_OF_DUMPLOADS]{}; /**< force config for each load for dual tariff */
 
 inline constexpr int16_t iTemperatureThreshold{ 100 }; /**< the temperature threshold to stop overriding in °C */
 
@@ -152,22 +166,5 @@ inline constexpr TemperatureSensing temperatureSensing{ unused_pin,
                                                           { 0x28, 0x1B, 0xD7, 0x6A, 0x09, 0x00, 0x00, 0xB7 } } }; /**< list of temperature sensor Addresses */
 
 inline constexpr uint32_t ROTATION_AFTER_SECONDS{ 8UL * 3600UL }; /**< rotates load priorities after this period of inactivity */
-
-/* --------------------------------------
-   RF configuration (for the RFM12B module)
-   frequency options are RF12_433MHZ, RF12_868MHZ or RF12_915MHZ
-*/
-#ifdef RF_PRESENT
-
-#define RF69_COMPAT 0  // for the RFM12B
-// #define RF69_COMPAT 1 // for the RF69
-
-#define FREQ RF12_868MHZ
-
-inline constexpr int nodeID{ 10 };        /**<  RFM12B node ID */
-inline constexpr int networkGroup{ 210 }; /**< wireless network group - needs to be same for all nodes */
-inline constexpr int UNO{ 1 };            /**< for when the processor contains the UNO bootloader. */
-
-#endif  // RF_PRESENT
 
 #endif  // CONFIG_H
