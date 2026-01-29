@@ -175,7 +175,7 @@ jobs:
           from xml.etree.ElementTree import Element, SubElement, tostring
           from xml.dom import minidom
 
-          with open('wokwi-output.txt', 'r') as f:
+          with open('wokwi-output.txt', 'r', encoding='utf-8', errors='ignore') as f:
               content = f.read()
 
           # Parse Unity output
