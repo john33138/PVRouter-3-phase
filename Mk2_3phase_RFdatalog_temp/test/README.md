@@ -120,20 +120,27 @@ pio test -e uno -f "*test_fastdivision_perf*" --upload-port /dev/ttyUSB0
 
 #### Benchmark Results (Arduino Uno @ 16MHz)
 
-These results were measured on real Arduino Uno hardware:
+These results were measured on real Arduino Uno hardware (10,000 iterations per test):
 
-| Function | Operation | Fast Time | Standard Time | Speedup |
-|----------|-----------|-----------|---------------|---------|
-| `divu10` | uint16_t / 10 | ~29 cycles | ~100+ cycles | **3-4x** |
-| `divmod10` | uint32_t / 10 + mod | ~80 cycles | ~400+ cycles | **5-7x** |
-| `divu8` | n >> 3 | 1 cycle | 1 cycle | 1x (same) |
-| `divu4` | n >> 2 | 1 cycle | 1 cycle | 1x (same) |
-| `divu2` | n >> 1 | 1 cycle | 1 cycle | 1x (same) |
+| Function | Value Range | Fast Time | Std Time | Speedup |
+|----------|-------------|-----------|----------|---------|
+| `divu10` | 0-255 (small) | 28,164μs | 134,028μs | **4.76x** |
+| `divu10` | 256-4095 (medium) | 28,608μs | 135,980μs | **4.75x** |
+| `divu10` | 0-65535 (large) | 27,340μs | 135,136μs | **4.94x** |
+| `divmod10` | 0-255 (small) | 89,584μs | 384,484μs | **4.29x** |
+| `divmod10` | full uint32_t | 89,016μs | 396,520μs | **4.45x** |
+
+**Cycle Estimation (1,000 iterations):**
+
+| Function | Measured Cycles | Notes |
+|----------|-----------------|-------|
+| `divu10` | ~48.3 cycles | Includes loop overhead and function call |
+| `divmod10` | ~133.8 cycles | Actual instruction cycles are lower |
 
 **Why This Matters:**
 
 The ADC ISR runs at 9.6 kHz (every 104μs = ~1664 cycles at 16MHz). Fast division is critical because:
-- Standard 32-bit division can take 400+ cycles
+- Standard 32-bit division can take 400+ cycles (~25% of ISR budget)
 - ISR must complete in <50μs (~800 cycles) to avoid missing samples
 - `divmod10` is used for decimal output formatting in ISR-safe code
 - `divu10` is used in power calculations
