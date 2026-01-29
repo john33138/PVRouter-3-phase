@@ -4,6 +4,7 @@
 name: CI
 permissions:
   contents: read
+  checks: write
 
 on:
   push:
@@ -164,18 +165,63 @@ jobs:
             --serial-log-file wokwi-output.txt \
             ${{ env.PROJECT_DIR }}/test/embedded/${{ matrix.test }}
 
-      - name: Show test results
+      - name: Convert Unity output to JUnit XML
         if: always()
         run: |
-          echo "### ${{ matrix.test }} Results" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          # Extract just the test results (lines with PASS/FAIL and summary)
-          grep -E "(PASS|FAIL|Tests.*Failures.*Ignored|OK$)" wokwi-output.txt | head -50 >> $GITHUB_STEP_SUMMARY || true
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          # Convert Unity test output to JUnit XML format
+          python3 << 'EOF'
+          import re
+          import sys
+          from xml.etree.ElementTree import Element, SubElement, tostring
+          from xml.dom import minidom
 
-      - name: Upload test output
+          with open('wokwi-output.txt', 'r') as f:
+              content = f.read()
+
+          # Parse Unity output
+          test_pattern = r'([^:]+):(\d+):([^:]+):(PASS|FAIL)'
+          summary_pattern = r'(\d+) Tests (\d+) Failures (\d+) Ignored'
+
+          tests = re.findall(test_pattern, content)
+          summary = re.search(summary_pattern, content)
+
+          # Build JUnit XML
+          testsuites = Element('testsuites')
+          testsuite = SubElement(testsuites, 'testsuite')
+          testsuite.set('name', '${{ matrix.test }}')
+          testsuite.set('tests', str(len(tests)))
+
+          failures = 0
+          for file, line, name, result in tests:
+              testcase = SubElement(testsuite, 'testcase')
+              testcase.set('name', name)
+              testcase.set('classname', file.split('/')[-1])
+              if result == 'FAIL':
+                  failures += 1
+                  failure = SubElement(testcase, 'failure')
+                  failure.set('message', f'Test failed at {file}:{line}')
+
+          testsuite.set('failures', str(failures))
+
+          # Pretty print
+          xml_str = minidom.parseString(tostring(testsuites)).toprettyxml(indent="  ")
+          with open('test-results.xml', 'w') as f:
+              f.write(xml_str)
+          EOF
+
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: ${{ matrix.test }}
+          path: test-results.xml
+          reporter: java-junit
+
+      - name: Upload test artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.test }}-output
-          path: wokwi-output.txt
+          path: |
+            wokwi-output.txt
+            test-results.xml
