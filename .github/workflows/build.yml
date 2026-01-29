@@ -110,14 +110,12 @@ jobs:
         run: pio test --project-dir ${{ env.PROJECT_DIR }} -e native -f "*${{ matrix.test }}*"
 
   # Embedded test jobs: runs each test in Wokwi simulator
-  # Sequential execution (max-parallel: 1) since all tests share the same build directory
   test-embedded:
     name: Embedded (${{ matrix.test }})
     needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         test:
           - test_fastdivision
@@ -163,4 +161,21 @@ jobs:
             --fail-text "FAIL" \
             --diagram-file ../diagram.json \
             --elf ${{ env.PROJECT_DIR }}/.pio/build/uno/firmware.elf \
+            --serial-log-file wokwi-output.txt \
             ${{ env.PROJECT_DIR }}/test/embedded/${{ matrix.test }}
+
+      - name: Show test results
+        if: always()
+        run: |
+          echo "### ${{ matrix.test }} Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          # Extract just the test results (lines with PASS/FAIL and summary)
+          grep -E "(PASS|FAIL|Tests.*Failures.*Ignored|OK$)" wokwi-output.txt | head -50 >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.test }}-output
+          path: wokwi-output.txt
