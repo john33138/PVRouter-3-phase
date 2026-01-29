@@ -15,7 +15,7 @@
  * - 2 TRIAC outputs for dump loads
  *
  * @version 1.0
- * @date 2024-09-06
+ * @date 2026-01-29
  */
 
 #ifndef CONFIG_H
@@ -34,7 +34,7 @@
 #include "utils_relay.h"
 
 // Serial output type - Human readable for initial setup and commissioning
-inline constexpr SerialOutputType SERIAL_OUTPUT_TYPE = SerialOutputType::HumanReadable;
+inline constexpr SerialOutputType SERIAL_OUTPUT_TYPE = SerialOutputType::IoT;
 
 //--------------------------------------------------------------------------------------------------
 // Basic Configuration
@@ -140,7 +140,7 @@ inline constexpr RelayEngine relays{ MINUTES(RELAY_FILTER_DELAY),
 //                                               { 12, { RELAY(0), 9, RELAY(2) } },
 //                                               { 13, ALL_LOADS_AND_RELAYS() } } }; /**< list of override pin/loads-relays pairs */
 
-inline constexpr OverridePins overridePins{ { { 4, ALL_LOADS() } } }; /**< list of override pin/loads-relays pairs */
+inline constexpr OverridePins overridePins{ { { 12, ALL_LOADS() } } }; /**< list of override pin/loads-relays pairs */
 
 inline constexpr uint8_t ul_OFF_PEAK_DURATION{ 8 };                        /**< Duration of the off-peak period in hours */
 inline constexpr pairForceLoad rg_ForceLoad[NO_OF_DUMPLOADS]{ { -3, 2 } }; /**< force config for load #1 ONLY for dual tariff */
