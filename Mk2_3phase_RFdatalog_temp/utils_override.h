@@ -24,7 +24,7 @@
  *
  * @author Frédéric Metrich (frederic.metrich@live.fr)
  * @version 0.1
- * @date 2026-01-28
+ * @date 2026-01-29
  * @copyright Copyright (c) 2025-2026
  */
 
@@ -244,6 +244,7 @@ public:
     return 0;
   }
 
+#ifdef ARDUINO
   /**
      * @brief Print the configured override pins and their bitmasks to Serial during startup.
      *
@@ -260,6 +261,7 @@ public:
       Serial.println(entries_[i].bitmask, BIN);
     }
   }
+#endif
 };
 
 /**

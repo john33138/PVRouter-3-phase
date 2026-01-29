@@ -2,59 +2,25 @@
  * @file test_main.cpp
  * @brief Native unit tests for utils_override.h functionality
  *
- * Tests the override pin mapping system using test-specific configuration values.
+ * Tests the override pin mapping system using the REAL utils_override.h header
+ * with test-specific configuration values.
  */
 
 #include <unity.h>
 #include <cstdint>
 
 #include "utils_bits.h"
+#include "utils_override.h"  // Use the REAL header
 
 // ============================================================================
-// Test-specific configuration
+// Test-specific configuration (stubs for config-dependent values)
 // ============================================================================
 
 // Test with 3 loads on specific pins
 inline constexpr uint8_t NO_OF_DUMPLOADS{ 3 };
 inline constexpr uint8_t physicalLoadPin[NO_OF_DUMPLOADS]{ 5, 6, 7 };
 
-// Minimal RelayEngine stub for testing
-template< uint8_t N, uint8_t D = 10 >
-class RelayEngine
-{
-public:
-  struct Relay
-  {
-    uint8_t pin;
-    constexpr uint8_t get_pin() const
-    {
-      return pin;
-    }
-  };
-
-  Relay relayData[N];
-
-  template< typename... Args >
-  constexpr RelayEngine(Args... args)
-    : relayData{}
-  {
-    // Simple initialization for test
-  }
-
-  constexpr uint8_t size() const
-  {
-    return N;
-  }
-  constexpr const Relay& get_relay(uint8_t idx) const
-  {
-    return relayData[idx];
-  }
-};
-
-// Test with relay diversion enabled and 2 relays on pins 8, 9
-inline constexpr bool RELAY_DIVERSION{ true };
-
-// Create a relay engine with specific pins for testing
+// Test relay engine stub (only need get_pin() and size())
 struct TestRelayEngine
 {
   struct Relay
@@ -79,129 +45,7 @@ struct TestRelayEngine
 };
 
 inline constexpr TestRelayEngine relays{};
-
-// ============================================================================
-// Include utils_override.h for generic utilities (PinList, OverridePins, etc.)
-// Note: We can't include the full header due to Arduino dependencies,
-// so we inline the necessary parts here.
-// ============================================================================
-
-// Valid pins: 2-13
-constexpr uint16_t validPinMask{ 0b11111111111100 };
-
-template< uint8_t... Pins >
-constexpr bool are_pins_valid()
-{
-  return ((validPinMask & (1U << Pins)) && ...);
-}
-
-template< uint8_t... Pins >
-constexpr uint16_t indicesToBitmask()
-{
-  return ((1U << Pins) | ...);
-}
-
-template< uint8_t MaxPins >
-struct PinList
-{
-  uint8_t pins[MaxPins];
-  uint8_t count;
-
-  constexpr PinList()
-    : pins{}, count(0) {}
-
-  constexpr PinList(uint16_t bitmask)
-    : pins{}, count(0)
-  {
-    for (uint8_t pin = 0; pin < 16 && count < MaxPins; ++pin)
-    {
-      if (bitmask & (1U << pin))
-      {
-        pins[count++] = pin;
-      }
-    }
-  }
-
-  template< typename... Args >
-  constexpr PinList(Args... args)
-    : pins{ static_cast< uint8_t >(args)... }, count(sizeof...(args))
-  {
-  }
-
-  constexpr uint16_t toBitmask() const
-  {
-    uint16_t result = 0;
-    for (uint8_t i = 0; i < count; ++i)
-    {
-      result |= (1U << pins[i]);
-    }
-    return result;
-  }
-};
-
-template< uint8_t MaxPins >
-struct KeyIndexPair
-{
-  uint8_t pin;
-  PinList< MaxPins > indexList;
-
-  constexpr KeyIndexPair(uint8_t k, const PinList< MaxPins >& list)
-    : pin(k), indexList(list) {}
-
-  constexpr uint16_t getBitmask() const
-  {
-    return indexList.toBitmask();
-  }
-};
-
-template< uint8_t N, uint8_t MaxPins = 16 >
-class OverridePins
-{
-private:
-  struct Entry
-  {
-    uint8_t pin;
-    uint16_t bitmask;
-  };
-
-  Entry entries_[N];
-
-public:
-  constexpr OverridePins(const KeyIndexPair< MaxPins > (&pairs)[N])
-    : entries_{}
-  {
-    for (uint8_t i = 0; i < N; ++i)
-    {
-      const_cast< Entry& >(entries_[i]) = { pairs[i].pin, pairs[i].getBitmask() };
-    }
-  }
-
-  constexpr uint8_t size() const
-  {
-    return N;
-  }
-  constexpr uint8_t getPin(uint8_t index) const
-  {
-    return index < N ? entries_[index].pin : 0;
-  }
-  constexpr uint16_t getBitmask(uint8_t index) const
-  {
-    return index < N ? entries_[index].bitmask : 0;
-  }
-
-  constexpr uint16_t findBitmask(uint8_t pin) const
-  {
-    for (uint8_t i = 0; i < N; ++i)
-    {
-      if (entries_[i].pin == pin)
-        return entries_[i].bitmask;
-    }
-    return 0;
-  }
-};
-
-template< uint8_t MaxPins, uint8_t N >
-OverridePins(const KeyIndexPair< MaxPins > (&)[N]) -> OverridePins< N, MaxPins >;
+inline constexpr bool RELAY_DIVERSION{ true };
 
 // ============================================================================
 // Config-dependent helpers (same logic as utils_override_helpers.h)
@@ -380,7 +224,7 @@ void test_ALL_LOADS_AND_RELAYS_includes_relays(void)
 }
 
 // ============================================================================
-// Tests for indicesToBitmask<>()
+// Tests for indicesToBitmask<>() - from utils_override.h
 // ============================================================================
 
 void test_indicesToBitmask_single_index(void)
@@ -402,7 +246,7 @@ void test_indicesToBitmask_consecutive_indices(void)
 }
 
 // ============================================================================
-// Tests for are_pins_valid<>()
+// Tests for are_pins_valid<>() - from utils_override.h
 // ============================================================================
 
 void test_are_pins_valid_with_valid_pins(void)
@@ -448,7 +292,7 @@ void test_are_pins_valid_all_valid_pins(void)
 }
 
 // ============================================================================
-// Tests for PinList
+// Tests for PinList - from utils_override.h
 // ============================================================================
 
 void test_PinList_default_constructor(void)
@@ -482,7 +326,7 @@ void test_PinList_from_bitmask(void)
 }
 
 // ============================================================================
-// Tests for KeyIndexPair
+// Tests for KeyIndexPair - from utils_override.h
 // ============================================================================
 
 void test_KeyIndexPair_getBitmask(void)
@@ -495,7 +339,7 @@ void test_KeyIndexPair_getBitmask(void)
 }
 
 // ============================================================================
-// Tests for OverridePins class
+// Tests for OverridePins class - from utils_override.h
 // ============================================================================
 
 void test_OverridePins_construction_and_size(void)
@@ -626,12 +470,12 @@ int main(void)
   RUN_TEST(test_ALL_LOADS_AND_RELAYS_includes_loads);
   RUN_TEST(test_ALL_LOADS_AND_RELAYS_includes_relays);
 
-  // indicesToBitmask tests
+  // indicesToBitmask tests (REAL from utils_override.h)
   RUN_TEST(test_indicesToBitmask_single_index);
   RUN_TEST(test_indicesToBitmask_multiple_indices);
   RUN_TEST(test_indicesToBitmask_consecutive_indices);
 
-  // are_pins_valid tests
+  // are_pins_valid tests (REAL from utils_override.h)
   RUN_TEST(test_are_pins_valid_with_valid_pins);
   RUN_TEST(test_are_pins_valid_rejects_pin_0);
   RUN_TEST(test_are_pins_valid_rejects_pin_1);
@@ -640,16 +484,16 @@ int main(void)
   RUN_TEST(test_are_pins_valid_boundary_pin_13);
   RUN_TEST(test_are_pins_valid_all_valid_pins);
 
-  // PinList tests
+  // PinList tests (REAL from utils_override.h)
   RUN_TEST(test_PinList_default_constructor);
   RUN_TEST(test_PinList_variadic_constructor);
   RUN_TEST(test_PinList_toBitmask);
   RUN_TEST(test_PinList_from_bitmask);
 
-  // KeyIndexPair tests
+  // KeyIndexPair tests (REAL from utils_override.h)
   RUN_TEST(test_KeyIndexPair_getBitmask);
 
-  // OverridePins tests
+  // OverridePins tests (REAL from utils_override.h)
   RUN_TEST(test_OverridePins_construction_and_size);
   RUN_TEST(test_OverridePins_getPin);
   RUN_TEST(test_OverridePins_getBitmask);
