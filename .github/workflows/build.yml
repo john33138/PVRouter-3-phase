@@ -136,6 +136,7 @@ jobs:
         run: |
           # Install Wokwi CLI
           curl -L https://wokwi.com/ci/install.sh | sh
+          export PATH="$HOME/bin:$HOME/.wokwi/bin:$PATH"
 
           # Run each embedded test sequentially
           for test in test_fastdivision test_utils_pins test_utils_relay test_teleinfo; do
