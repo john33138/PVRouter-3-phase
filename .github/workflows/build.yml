@@ -120,6 +120,7 @@ jobs:
       matrix:
         test:
           - test_fastdivision
+          - test_mult_asm
           - test_utils_pins
           - test_utils_relay
           - test_teleinfo

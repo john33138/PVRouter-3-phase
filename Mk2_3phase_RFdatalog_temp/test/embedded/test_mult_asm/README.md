@@ -2,16 +2,21 @@
 
 This directory contains Unity-based unit tests for the assembly-optimized multiplication functions.
 
+**Note:** Performance benchmarks are in a separate directory (`test_mult_asm_perf/`) and should only be run on real hardware, not in CI simulators.
+
 ## Running the Tests
 
 To run the multiplication function tests on embedded hardware (AVR):
 
 ```bash
-# Run all embedded tests
-pio test --environment uno
-
-# Run only the multiplication tests
+# Run functional tests (suitable for CI)
 pio test --environment uno --filter test_mult_asm
+
+# Run performance benchmarks (hardware only, not for CI)
+pio test --environment uno --filter test_mult_asm_perf
+
+# Run all multiplication tests including benchmarks
+pio test --environment uno --filter "test_mult_asm*"
 
 # Run with verbose output
 pio test --environment uno --filter test_mult_asm --verbose
@@ -22,7 +27,8 @@ pio test --environment uno --filter test_mult_asm --verbose
 The tests cover:
 
 1. **Basic Functionality**
-   - `mult16x16_to32`: 16×16→32 signed multiplication
+   - `multS16x16_to32`: 16×16→32 signed multiplication
+   - `multU16x16_to32`: 16×16→32 unsigned multiplication
    - `mult16x8_q8`: 16×8 Q8 fractional multiplication with rounding
 
 2. **Edge Cases**
@@ -49,8 +55,9 @@ Results measured on real Arduino Uno hardware:
 
 | Function | Operations | Assembly Time | Standard Time | Speedup |
 |----------|------------|---------------|---------------|---------|
-| `mult16x16_to32` | 36,000 | 99,376μs | 146,744μs | **1.48x** |
-| `mult16x8_q8` | 480,000 | 792,832μs | 1,867,320μs | **2.36x** |
+| `multS16x16_to32` | 36,000 | 99,376μs | 146,748μs | **1.48x** |
+| `multU16x16_to32` | 49,000 | 127,632μs | 146,504μs | **1.15x** |
+| `mult16x8_q8` | 480,000 | 792,828μs | 1,867,324μs | **2.36x** |
 
 **ISR Simulation (1,000 samples):**
 

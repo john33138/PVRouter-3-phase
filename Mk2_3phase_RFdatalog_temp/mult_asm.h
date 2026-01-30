@@ -3,7 +3,7 @@
  * @author Based on florentbr's suggestions and avrfreertos optimizations
  * @brief Assembly-optimized multiplication functions for AVR microcontrollers
  * @version 0.1
- * @date 2026-01-29
+ * @date 2026-01-30
  *
  * @copyright Copyright (c) 2025-2026
  *
@@ -40,7 +40,7 @@
  * 
  * @ingroup TimeCritical
  */
-static inline __attribute__((always_inline)) void mult16x16_to32(int32_t& result, int16_t a, int16_t b)
+static inline __attribute__((always_inline)) void multS16x16_to32(int32_t& result, int16_t a, int16_t b)
 {
 #ifdef __AVR__
   asm volatile(
@@ -65,6 +65,50 @@ static inline __attribute__((always_inline)) void mult16x16_to32(int32_t& result
     : "r26");
 #else
   result = static_cast< int32_t >(a) * b;
+#endif
+}
+
+/**
+ * @brief Optimized 16×16→32 unsigned multiplication with assembly
+ *
+ * This function performs an unsigned 16-bit × 16-bit multiplication returning
+ * a 32-bit result using hand-optimized AVR assembly. It's significantly
+ * faster than GCC's library multiplication functions.
+ *
+ * @param result Reference to uint32_t variable to store the result
+ * @param a First 16-bit unsigned value
+ * @param b Second 16-bit unsigned value
+ *
+ * @note On AVR: ~15-20 cycles vs ~50+ cycles for library calls
+ * @note Fallback available for non-AVR platforms
+ * @note Based on avrfreertos and OpenMusicLabs techniques
+ * @note Function provides type checking and debugging support
+ *
+ * @ingroup TimeCritical
+ */
+static inline __attribute__((always_inline)) void multU16x16_to32(uint32_t& result, uint16_t a, uint16_t b)
+{
+#ifdef __AVR__
+  asm volatile(
+    "clr r26                \n\t"  // Clear temporary register
+    "mul %A1, %A2           \n\t"  // a_lo * b_lo
+    "movw %A0, r0           \n\t"  // Store low 16 bits
+    "mul %B1, %B2           \n\t"  // a_hi * b_hi
+    "movw %C0, r0           \n\t"  // Store high 16 bits
+    "mul %B2, %A1           \n\t"  // b_hi * a_lo
+    "add %B0, r0            \n\t"  // Add partial result
+    "adc %C0, r1            \n\t"
+    "adc %D0, r26           \n\t"
+    "mul %B1, %A2           \n\t"  // a_hi * b_lo
+    "add %B0, r0            \n\t"  // Add partial result
+    "adc %C0, r1            \n\t"
+    "adc %D0, r26           \n\t"
+    "clr r1                 \n\t"  // Restore r1 to zero
+    : "=&r"(result)
+    : "a"(a), "a"(b)
+    : "r26");
+#else
+  result = static_cast< uint32_t >(a) * b;
 #endif
 }
 
