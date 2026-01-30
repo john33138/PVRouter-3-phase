@@ -430,16 +430,20 @@ void processPolarity(const uint8_t phase, const int16_t rawSample)
  */
 void processCurrentRawSample(const uint8_t phase, const int16_t rawSample)
 {
-  // extra items for an LPF to improve the processing of data samples from CT1
-  static int32_t lpf_long[NO_OF_PHASES]{};  // new LPF, for offsetting the behaviour of CTx as a HPF
-
   // remove most of the DC offset from the current sample (the precise value does not matter)
   int32_t sampleIminusDC = (static_cast< int32_t >(rawSample - i_DCoffset_I_nom)) << 8;
 
   // extra filtering to offset the HPF effect of CTx
-  const int32_t last_lpf_long{ lpf_long[phase] };
-  lpf_long[phase] += alpha * (sampleIminusDC - last_lpf_long);
-  sampleIminusDC += (lpf_gain * lpf_long[phase]);
+  // Using if constexpr ensures zero overhead when CT filtering is disabled
+  if constexpr (lpf_gain != 0.0F && alpha != 0.0F)
+  {
+    // extra items for an LPF to improve the processing of data samples from CT1
+    static int32_t lpf_long[NO_OF_PHASES]{};  // new LPF, for offsetting the behaviour of CTx as a HPF
+
+    const int32_t last_lpf_long{ lpf_long[phase] };
+    lpf_long[phase] += alpha * (sampleIminusDC - last_lpf_long);
+    sampleIminusDC += (lpf_gain * lpf_long[phase]);
+  }
 
   // calculate the "real power" in this sample pair and add to the accumulated sum
   const int16_t filtV_div4 = l_sampleVminusDC[phase] >> 2;  // reduce to 16-bits (now x64, or 2^6)
@@ -1132,56 +1136,58 @@ void printParamsForSelectedOutputMode()
  *
  * @ingroup TimeCritical
  */
+
+// ADC optimization: base ADMUX value (REFS0 for AVcc reference, right-aligned)
+constexpr uint8_t _ADMUX{ (1 << REFS0) };
+
+/**
+ * @brief ADC channel context for circular linked list optimization
+ *
+ * This structure replaces the switch-case logic in the ADC ISR with a more
+ * efficient circular linked list approach. Minimal memory footprint.
+ *
+ * Based on florentbr's optimization suggestion #1 for reducing ISR overhead.
+ *
+ * @ingroup TimeCritical
+ */
+struct adc_ctx_t
+{
+  struct adc_ctx_t *next; /**< pointer to next context in circular list */
+  uint8_t index;          /**< channel index (0-5 for V1,I1,V2,I2,V3,I3) */
+  uint8_t admux;          /**< ADMUX register value for this channel */
+};
+
+// ADC optimization: circular linked list for channel management
+// Each entry points to next channel and stores ADMUX value for the channel after next
+static adc_ctx_t _channels[6] = {
+  { .next = &_channels[1], .index = 0, .admux = _ADMUX | sensorV[1] },  // V1 -> setup for V2
+  { .next = &_channels[2], .index = 1, .admux = _ADMUX | sensorI[1] },  // I1 -> setup for I2
+  { .next = &_channels[3], .index = 2, .admux = _ADMUX | sensorV[2] },  // V2 -> setup for V3
+  { .next = &_channels[4], .index = 3, .admux = _ADMUX | sensorI[2] },  // I2 -> setup for I3
+  { .next = &_channels[5], .index = 4, .admux = _ADMUX | sensorV[0] },  // V3 -> setup for V1
+  { .next = &_channels[0], .index = 5, .admux = _ADMUX | sensorI[0] }   // I3 -> setup for I1
+};
+
+static adc_ctx_t *_ctx = &_channels[0];
+
 ISR(ADC_vect)
 {
-  static uint8_t sample_index{ 0 };
-  int16_t rawSample;
+  const int16_t rawSample = ADC;
 
-  switch (sample_index)
+  if ((_ctx->index & 1) == 0)
   {
-    case 0:
-      rawSample = ADC;                  // store the ADC value (this one is for Voltage L1)
-      ADMUX = bit(REFS0) + sensorV[1];  // the conversion for I1 is already under way
-      ++sample_index;                   // increment the control flag
-      //
-      processVoltageRawSample(0, rawSample);
-      break;
-    case 1:
-      rawSample = ADC;                  // store the ADC value (this one is for Current L1)
-      ADMUX = bit(REFS0) + sensorI[1];  // the conversion for V2 is already under way
-      ++sample_index;                   // increment the control flag
-      //
-      processCurrentRawSample(0, rawSample);
-      break;
-    case 2:
-      rawSample = ADC;                  // store the ADC value (this one is for Voltage L2)
-      ADMUX = bit(REFS0) + sensorV[2];  // the conversion for I2 is already under way
-      ++sample_index;                   // increment the control flag
-      //
-      processVoltageRawSample(1, rawSample);
-      break;
-    case 3:
-      rawSample = ADC;                  // store the ADC value (this one is for Current L2)
-      ADMUX = bit(REFS0) + sensorI[2];  // the conversion for V3 is already under way
-      ++sample_index;                   // increment the control flag
-      //
-      processCurrentRawSample(1, rawSample);
-      break;
-    case 4:
-      rawSample = ADC;                  // store the ADC value (this one is for Voltage L3)
-      ADMUX = bit(REFS0) + sensorV[0];  // the conversion for I3 is already under way
-      ++sample_index;                   // increment the control flag
-      //
-      processVoltageRawSample(2, rawSample);
-      break;
-    case 5:
-      rawSample = ADC;                  // store the ADC value (this one is for Current L3)
-      ADMUX = bit(REFS0) + sensorI[0];  // the conversion for V1 is already under way
-      sample_index = 0;                 // reset the control flag
-      //
-      processCurrentRawSample(2, rawSample);
-      break;
-    default:
-      sample_index = 0;  // to prevent lockup (should never get here)
+    // even index = voltage channel (0, 2, 4 -> phases 0, 1, 2)
+    processVoltageRawSample(_ctx->index >> 1, rawSample);
   }
+  else
+  {
+    // odd index = current channel (1, 3, 5 -> phases 0, 1, 2)
+    processCurrentRawSample(_ctx->index >> 1, rawSample);
+  }
+
+  // Set ADMUX at the end of the interrupt to ensure at least 128 CPU cycles
+  // have passed since the trigger event (ATmega328P datasheet requirement)
+  ADMUX = _ctx->admux;
+
+  _ctx = _ctx->next;
 }  // end of ISR
