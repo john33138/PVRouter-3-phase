@@ -155,9 +155,6 @@ void updateStatusLED()
 
   // Green LED is handled by Timer1 ISR
 
-  // Red LED: OFF when RF OK, fast blink (~4Hz) when RF lost
-  constexpr unsigned long RED_LED_INTERVAL_MS{ 125 };
-
   if (rfStatus != RF_LOST)
   {
     setPinOFF(RED_LED_PIN);
