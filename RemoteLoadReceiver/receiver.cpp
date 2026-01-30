@@ -161,14 +161,10 @@ void processRfMessages()
     // Only process messages from the expected transmitter
     if (radio.SENDERID == RFConfig::ROUTER_NODE_ID)
     {
-      // Copy received data
-      memcpy(&receivedData, (void *)radio.DATA, sizeof(receivedData));
+      // Copy received data (single byte, direct assignment is faster than memcpy)
+      receivedData.loadBitmask = radio.DATA[0];
 
-      // Send ACK if requested
-      if (radio.ACKRequested())
-      {
-        radio.sendACK();
-      }
+      // Note: ACK not used - transmitter sends with requestACK=false for faster, non-blocking operation
 
       // Update loads based on received bitmask
       updateLoads(receivedData.loadBitmask);
