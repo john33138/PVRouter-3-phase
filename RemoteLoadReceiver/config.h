@@ -31,7 +31,7 @@ inline constexpr unsigned long RF_TIMEOUT_MS{ 500 };         /**< Lost RF link a
 inline constexpr unsigned long WATCHDOG_INTERVAL_MS{ 1000 }; /**< Toggle watchdog this often */
 
 // Red LED: OFF when RF OK, fast blink (~4Hz) when RF lost
-constexpr unsigned long RED_LED_INTERVAL_MS{ 125 };
+inline constexpr unsigned long RED_LED_INTERVAL_MS{ 125 };
 
 // Pin configuration for RFM69 module
 inline constexpr uint8_t RF_CS_PIN{ 10 }; /**< SPI Chip Select pin */
