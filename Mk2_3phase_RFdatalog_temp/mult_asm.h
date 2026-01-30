@@ -22,6 +22,8 @@
 
 #include <stdint.h>
 
+#include "type_traits/is_same.hpp"
+
 /**
  * @brief Optimized 16×16→32 signed multiplication with assembly
  * 
@@ -40,8 +42,12 @@
  * 
  * @ingroup TimeCritical
  */
-static inline __attribute__((always_inline)) void multS16x16_to32(int32_t& result, int16_t a, int16_t b)
+template< typename A, typename B >
+static inline __attribute__((always_inline)) void multS16x16_to32(int32_t& result, A a, B b)
 {
+  static_assert(is_same_v< A, int16_t >, "First argument must be int16_t");
+  static_assert(is_same_v< B, int16_t >, "Second argument must be int16_t");
+
 #ifdef __AVR__
   asm volatile(
     "clr r26                \n\t"  // Clear temporary register
@@ -86,8 +92,12 @@ static inline __attribute__((always_inline)) void multS16x16_to32(int32_t& resul
  *
  * @ingroup TimeCritical
  */
-static inline __attribute__((always_inline)) void multU16x16_to32(uint32_t& result, uint16_t a, uint16_t b)
+template< typename A, typename B >
+static inline __attribute__((always_inline)) void multU16x16_to32(uint32_t& result, A a, B b)
 {
+  static_assert(is_same_v< A, uint16_t >, "First argument must be uint16_t");
+  static_assert(is_same_v< B, uint16_t >, "Second argument must be uint16_t");
+
 #ifdef __AVR__
   asm volatile(
     "clr r26                \n\t"  // Clear temporary register
@@ -131,8 +141,12 @@ static inline __attribute__((always_inline)) void multU16x16_to32(uint32_t& resu
  * 
  * @ingroup TimeCritical
  */
-static inline __attribute__((always_inline)) void mult16x8_q8(int16_t& result, int16_t value, uint8_t fraction)
+template< typename V, typename F >
+static inline __attribute__((always_inline)) void mult16x8_q8(int16_t& result, V value, F fraction)
 {
+  static_assert(is_same_v< V, int16_t >, "Value argument must be int16_t");
+  static_assert(is_same_v< F, uint8_t >, "Fraction argument must be uint8_t");
+
 #ifdef __AVR__
   asm volatile(
     "mulsu %B[val], %[frac]  \n\t"  // value_hi * fraction (signed*unsigned)
