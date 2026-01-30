@@ -2,19 +2,20 @@
  * @file receiver.cpp
  * @brief Implementation of Remote Load Receiver functions
  * @version 2.0
- * @date 2025-10-26
+ * @date 2026-01-30
  * @author Frédéric Metrich (frederic.metrich@live.fr)
  *
- * @copyright Copyright (c) 2025
+ * @copyright Copyright (c) 2025-2026
  */
 
 #include "config.h"
+#include "utils_pins.h"  // Fast direct port manipulation
 
 // Global state variables
 RfStatus rfStatus{ RF_LOST };
 unsigned long lastMessageTime{ 0 };
 unsigned long lastWatchdogToggle{ 0 };
-bool watchdogState{ false };
+unsigned long lastRedLedToggle{ 0 };
 uint8_t previousLoadBitmask{ 0xFF };  // Initialize to invalid value to force first print
 RemoteLoadPayload receivedData;
 
@@ -28,20 +29,25 @@ RFM69 radio(RFConfig::RF_CS_PIN, RFConfig::RF_IRQ_PIN, RFConfig::IS_RFM69HW);
 
 void initializeReceiver()
 {
-  // Configure load pins as outputs and set to OFF
-  for (uint8_t i = 0; i < NO_OF_LOADS; ++i)
+  // Build bitmask of all load pins for fast initialization
+  uint16_t loadPinMask{ 0 };
+  uint8_t i{ NO_OF_LOADS };
+  do
   {
-    pinMode(loadPins[i], OUTPUT);
-    digitalWrite(loadPins[i], LOW);  // Loads OFF initially
-  }
+    --i;
+    loadPinMask |= bit(loadPins[i]);
+  } while (i);
+
+  // Configure load pins as outputs and set to OFF (fast direct port manipulation)
+  setPinsAsOutput(loadPinMask);
+  setPinsOFF(loadPinMask);
 
   // Configure status LEDs if present
   if constexpr (STATUS_LEDS_PRESENT)
   {
-    pinMode(GREEN_LED_PIN, OUTPUT);
-    digitalWrite(GREEN_LED_PIN, LOW);
-    pinMode(RED_LED_PIN, OUTPUT);
-    digitalWrite(RED_LED_PIN, LOW);
+    constexpr uint16_t ledPinMask = bit(GREEN_LED_PIN) | bit(RED_LED_PIN);
+    setPinsAsOutput(ledPinMask);
+    setPinsOFF(ledPinMask);
   }
 
   // Initialize serial for debugging
@@ -88,18 +94,37 @@ void updateWatchdog()
 {
   if ((millis() - lastWatchdogToggle) > WATCHDOG_INTERVAL_MS)
   {
-    watchdogState = !watchdogState;
+    if constexpr (STATUS_LEDS_PRESENT)
+    {
+      togglePin(GREEN_LED_PIN);  // Fast direct port toggle
+    }
     lastWatchdogToggle = millis();
   }
 }
 
 void updateLoads(uint8_t bitmask)
 {
-  for (uint8_t i = 0; i < NO_OF_LOADS; ++i)
+  // Build pin masks from load bitmask (same approach as main program)
+  uint16_t pinsON{ 0 };
+  uint16_t pinsOFF{ 0 };
+
+  uint8_t i{ NO_OF_LOADS };
+  do
   {
-    bool loadOn = (bitmask & (1 << i)) != 0;
-    digitalWrite(loadPins[i], loadOn ? HIGH : LOW);
-  }
+    --i;
+    if (bitmask & (1 << i))
+    {
+      pinsON |= bit(loadPins[i]);
+    }
+    else
+    {
+      pinsOFF |= bit(loadPins[i]);
+    }
+  } while (i);
+
+  // Single port write for all pins - fastest possible update
+  setPinsOFF(pinsOFF);
+  setPinsON(pinsON);
 }
 
 void updateStatusLED()
@@ -109,17 +134,22 @@ void updateStatusLED()
     return;
   }
 
-  // Green LED: 1Hz watchdog blink (500ms on, 500ms off)
-  digitalWrite(GREEN_LED_PIN, watchdogState ? HIGH : LOW);
+  // Green LED is handled by updateWatchdog() using togglePin()
 
   // Red LED: Fast blink when RF lost (~4Hz = 125ms period)
+  constexpr unsigned long RED_LED_INTERVAL_MS{ 125 };
+
   if (rfStatus == RF_LOST)
   {
-    digitalWrite(RED_LED_PIN, (millis() / 125) % 2);
+    if ((millis() - lastRedLedToggle) > RED_LED_INTERVAL_MS)
+    {
+      togglePin(RED_LED_PIN);
+      lastRedLedToggle = millis();
+    }
   }
   else
   {
-    digitalWrite(RED_LED_PIN, LOW);  // RF OK - red LED off
+    setPinOFF(RED_LED_PIN);  // RF OK - red LED off
   }
 }
 
@@ -184,11 +214,15 @@ void checkRfTimeout()
       rfStatus = RF_LOST;
       Serial.println(F("RF link LOST - turning all loads OFF"));
 
-      // Safety: Turn all loads OFF when RF link is lost
-      for (uint8_t i = 0; i < NO_OF_LOADS; ++i)
+      // Safety: Turn all loads OFF when RF link is lost (fast direct port manipulation)
+      uint16_t pinsOFF{ 0 };
+      uint8_t i{ NO_OF_LOADS };
+      do
       {
-        digitalWrite(loadPins[i], LOW);
-      }
+        --i;
+        pinsOFF |= bit(loadPins[i]);
+      } while (i);
+      setPinsOFF(pinsOFF);
 
       // Reset previous bitmask so next valid message will be printed
       previousLoadBitmask = 0xFF;
