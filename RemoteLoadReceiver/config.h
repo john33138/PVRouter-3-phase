@@ -44,10 +44,10 @@ struct RemoteLoadPayload
 };
 
 // RF Status enumeration
-enum RfStatus
+enum class RfStatus : uint8_t
 {
-  RF_OK,  /**< RF link is active */
-  RF_LOST /**< RF link has been lost */
+  OK,  /**< RF link is active */
+  LOST /**< RF link has been lost */
 };
 
 #endif  // CONFIG_H

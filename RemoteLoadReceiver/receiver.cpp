@@ -12,7 +12,7 @@
 #include "utils_pins.h"  // Fast direct port manipulation
 
 // Global state variables
-RfStatus rfStatus{ RF_LOST };
+RfStatus rfStatus{ RfStatus::LOST };
 unsigned long lastMessageTime{ 0 };
 unsigned long lastRedLedToggle{ 0 };
 uint8_t previousLoadBitmask{ 0xFF };  // Initialize to invalid value to force first print
@@ -155,7 +155,7 @@ void updateStatusLED()
 
   // Green LED is handled by Timer1 ISR
 
-  if (rfStatus != RF_LOST)
+  if (rfStatus != RfStatus::LOST)
   {
     setPinOFF(RED_LED_PIN);
     return;
@@ -195,9 +195,9 @@ void processRfMessages()
   // Update RF status
   lastMessageTime = millis();
 
-  if (rfStatus != RF_OK)
+  if (rfStatus != RfStatus::OK)
   {
-    rfStatus = RF_OK;
+    rfStatus = RfStatus::OK;
     Serial.println(F("RF link restored"));
   }
 
@@ -229,12 +229,12 @@ void checkRfTimeout()
     return;
   }
 
-  if (rfStatus == RF_LOST)
+  if (rfStatus == RfStatus::LOST)
   {
     return;
   }
 
-  rfStatus = RF_LOST;
+  rfStatus = RfStatus::LOST;
   Serial.println(F("RF link LOST - turning all loads OFF"));
 
   // Safety: Turn all loads OFF when RF link is lost (fast direct port manipulation)
