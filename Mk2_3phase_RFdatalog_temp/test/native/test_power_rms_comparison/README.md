@@ -64,6 +64,17 @@ Verify that the new left-aligned ADC implementation produces equivalent results 
 | `test_varying_power_factor_with_noise` | PF 0°-90° with noise |
 | `test_stress_50000_cycles` | 50,000 cycles (~17 min at 50Hz) |
 
+### Realistic Load Variation Tests (6 tests)
+
+| Test | Description |
+|------|-------------|
+| `test_multiple_current_amplitudes` | Tests 7 different current levels (20-400) from light to heavy load |
+| `test_sinusoidal_load_variation` | Current amplitude varies sinusoidally over 5,000 cycles |
+| `test_random_load_steps` | Random appliance on/off events over 10,000 cycles |
+| `test_cloud_shadow_simulation` | Solar cloud shadow dynamics over 10,000 cycles |
+| `test_daily_solar_profile` | 24-hour solar pattern (8,640 cycles = 24 hrs scaled) |
+| `test_import_export_transitions` | Bidirectional power flow with phase changes over 10,000 cycles |
+
 ## Key Findings
 
 ### Mathematical Identity Proven

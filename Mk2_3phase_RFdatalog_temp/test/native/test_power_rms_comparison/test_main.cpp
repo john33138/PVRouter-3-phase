@@ -1189,6 +1189,390 @@ void test_stress_50000_cycles(void)
 }
 
 // ============================================================================
+// Realistic Load Variation Tests
+// ============================================================================
+
+/**
+ * @brief Test with multiple current amplitudes (light to heavy load)
+ *
+ * Simulates different load levels from very light (10A) to heavy (200A equivalent).
+ */
+void test_multiple_current_amplitudes(void)
+{
+  // Current amplitudes in ADC counts (peak)
+  // 50 = ~1A, 100 = ~2A, 200 = ~4A, 300 = ~6A, 400 = ~8A (approximate)
+  int16_t current_amplitudes[] = { 20, 50, 100, 150, 200, 300, 400 };
+  const int16_t NOISE_AMPLITUDE = 2;
+
+  for (int16_t i_amp : current_amplitudes)
+  {
+    OldImplementation oldTest;
+    NewImplementation newTest;
+    oldTest.l_DCoffset_V = 512L * 256L;
+    newTest.i_DCoffset_V = 512U << 6;
+
+    rng.seed(77777);
+
+    // Run 1000 cycles for each amplitude
+    for (int cycle = 0; cycle < 1000; ++cycle)
+    {
+      for (uint16_t s = 0; s < SAMPLES_PER_CYCLE; ++s)
+      {
+        uint16_t v_adc = generateSineADCWithNoise(s, ADC_MID_POINT, VOLTAGE_AMPLITUDE, NOISE_AMPLITUDE);
+        uint16_t i_adc = generateSineADCWithNoise(s, ADC_MID_POINT, i_amp, NOISE_AMPLITUDE);
+
+        oldTest.processPolarity(v_adc);
+        oldTest.processCurrentRawSample(i_adc);
+        oldTest.processVoltage();
+
+        newTest.processPolarity(toLeftAligned(v_adc));
+        newTest.processCurrentRawSample(toLeftAligned(i_adc));
+        newTest.processVoltage();
+
+        if (s == SAMPLES_PER_HALF_CYCLE - 1)
+        {
+          oldTest.processMinusHalfCycle();
+          newTest.processMinusHalfCycle();
+        }
+      }
+    }
+
+    // For meaningful current, check percentage difference
+    if (i_amp >= 50)
+    {
+      float diff = 100.0f * fabsf(static_cast< float >(newTest.l_sumP - oldTest.l_sumP))
+                   / fabsf(static_cast< float >(oldTest.l_sumP));
+      TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, diff);
+    }
+  }
+}
+
+/**
+ * @brief Test with sinusoidally varying current (simulating slow load changes)
+ *
+ * Current amplitude varies sinusoidally over ~100 cycles, simulating
+ * gradual load changes like motor spin-up/down or heating cycles.
+ */
+void test_sinusoidal_load_variation(void)
+{
+  OldImplementation oldTest;
+  NewImplementation newTest;
+  oldTest.l_DCoffset_V = 512L * 256L;
+  newTest.i_DCoffset_V = 512U << 6;
+
+  rng.seed(88888);
+
+  const int NUM_CYCLES = 5000;
+  const int16_t NOISE_AMPLITUDE = 2;
+  const int16_t MIN_CURRENT = 50;    // Minimum current amplitude
+  const int16_t MAX_CURRENT = 350;   // Maximum current amplitude
+  const int VARIATION_PERIOD = 200;  // Cycles for one full load variation
+
+  for (int cycle = 0; cycle < NUM_CYCLES; ++cycle)
+  {
+    // Calculate current amplitude for this cycle (varies sinusoidally)
+    float load_angle = 2.0f * PI * cycle / VARIATION_PERIOD;
+    int16_t current_amp = MIN_CURRENT + static_cast< int16_t >((MAX_CURRENT - MIN_CURRENT) * (0.5f + 0.5f * sinf(load_angle)));
+
+    for (uint16_t s = 0; s < SAMPLES_PER_CYCLE; ++s)
+    {
+      uint16_t v_adc = generateSineADCWithNoise(s, ADC_MID_POINT, VOLTAGE_AMPLITUDE, NOISE_AMPLITUDE);
+      uint16_t i_adc = generateSineADCWithNoise(s, ADC_MID_POINT, current_amp, NOISE_AMPLITUDE);
+
+      oldTest.processPolarity(v_adc);
+      oldTest.processCurrentRawSample(i_adc);
+      oldTest.processVoltage();
+
+      newTest.processPolarity(toLeftAligned(v_adc));
+      newTest.processCurrentRawSample(toLeftAligned(i_adc));
+      newTest.processVoltage();
+
+      if (s == SAMPLES_PER_HALF_CYCLE - 1)
+      {
+        oldTest.processMinusHalfCycle();
+        newTest.processMinusHalfCycle();
+      }
+    }
+  }
+
+  float diff = 100.0f * fabsf(static_cast< float >(newTest.l_sumP - oldTest.l_sumP))
+               / fabsf(static_cast< float >(oldTest.l_sumP));
+  TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, diff);
+}
+
+/**
+ * @brief Test with random step changes in current (simulating appliance switching)
+ *
+ * Current amplitude changes randomly every 10-50 cycles, simulating
+ * appliances turning on/off.
+ */
+void test_random_load_steps(void)
+{
+  OldImplementation oldTest;
+  NewImplementation newTest;
+  oldTest.l_DCoffset_V = 512L * 256L;
+  newTest.i_DCoffset_V = 512U << 6;
+
+  rng.seed(99999);
+
+  const int NUM_CYCLES = 10000;
+  const int16_t NOISE_AMPLITUDE = 2;
+  int16_t current_amp = 200;  // Start with medium load
+  int cycles_until_change = 30;
+
+  for (int cycle = 0; cycle < NUM_CYCLES; ++cycle)
+  {
+    // Random load step changes
+    if (--cycles_until_change <= 0)
+    {
+      // Random new current amplitude (20-400)
+      current_amp = 20 + static_cast< int16_t >(rng.next() % 380);
+      // Random duration until next change (10-50 cycles)
+      cycles_until_change = 10 + static_cast< int >(rng.next() % 40);
+    }
+
+    for (uint16_t s = 0; s < SAMPLES_PER_CYCLE; ++s)
+    {
+      uint16_t v_adc = generateSineADCWithNoise(s, ADC_MID_POINT, VOLTAGE_AMPLITUDE, NOISE_AMPLITUDE);
+      uint16_t i_adc = generateSineADCWithNoise(s, ADC_MID_POINT, current_amp, NOISE_AMPLITUDE);
+
+      oldTest.processPolarity(v_adc);
+      oldTest.processCurrentRawSample(i_adc);
+      oldTest.processVoltage();
+
+      newTest.processPolarity(toLeftAligned(v_adc));
+      newTest.processCurrentRawSample(toLeftAligned(i_adc));
+      newTest.processVoltage();
+
+      if (s == SAMPLES_PER_HALF_CYCLE - 1)
+      {
+        oldTest.processMinusHalfCycle();
+        newTest.processMinusHalfCycle();
+      }
+    }
+  }
+
+  float diff = 100.0f * fabsf(static_cast< float >(newTest.l_sumP - oldTest.l_sumP))
+               / fabsf(static_cast< float >(oldTest.l_sumP));
+  TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, diff);
+}
+
+/**
+ * @brief Test simulating cloud passing over solar panels
+ *
+ * Current (generation) varies with "cloud shadows" - rapid dips and recoveries.
+ */
+void test_cloud_shadow_simulation(void)
+{
+  OldImplementation oldTest;
+  NewImplementation newTest;
+  oldTest.l_DCoffset_V = 512L * 256L;
+  newTest.i_DCoffset_V = 512U << 6;
+
+  rng.seed(11111);
+
+  const int NUM_CYCLES = 10000;
+  const int16_t NOISE_AMPLITUDE = 3;
+  const int16_t CLEAR_SKY_CURRENT = 350;  // Full solar generation
+  const int16_t CLOUDY_CURRENT = 80;      // Reduced during cloud shadow
+
+  float cloud_factor = 1.0f;  // 1.0 = clear, 0.0 = fully clouded
+  float cloud_velocity = 0.0f;
+
+  for (int cycle = 0; cycle < NUM_CYCLES; ++cycle)
+  {
+    // Simulate cloud dynamics
+    // Random chance of cloud starting/ending
+    if (rng.next() % 500 == 0)
+    {
+      cloud_velocity = (rng.next() % 2 == 0) ? -0.05f : 0.05f;
+    }
+
+    cloud_factor += cloud_velocity;
+    if (cloud_factor > 1.0f)
+    {
+      cloud_factor = 1.0f;
+      cloud_velocity = 0;
+    }
+    if (cloud_factor < 0.2f)
+    {
+      cloud_factor = 0.2f;
+      cloud_velocity = 0;
+    }
+
+    int16_t current_amp = CLOUDY_CURRENT + static_cast< int16_t >((CLEAR_SKY_CURRENT - CLOUDY_CURRENT) * cloud_factor);
+
+    for (uint16_t s = 0; s < SAMPLES_PER_CYCLE; ++s)
+    {
+      uint16_t v_adc = generateSineADCWithNoise(s, ADC_MID_POINT, VOLTAGE_AMPLITUDE, NOISE_AMPLITUDE);
+      uint16_t i_adc = generateSineADCWithNoise(s, ADC_MID_POINT, current_amp, NOISE_AMPLITUDE);
+
+      oldTest.processPolarity(v_adc);
+      oldTest.processCurrentRawSample(i_adc);
+      oldTest.processVoltage();
+
+      newTest.processPolarity(toLeftAligned(v_adc));
+      newTest.processCurrentRawSample(toLeftAligned(i_adc));
+      newTest.processVoltage();
+
+      if (s == SAMPLES_PER_HALF_CYCLE - 1)
+      {
+        oldTest.processMinusHalfCycle();
+        newTest.processMinusHalfCycle();
+      }
+    }
+  }
+
+  float diff = 100.0f * fabsf(static_cast< float >(newTest.l_sumP - oldTest.l_sumP))
+               / fabsf(static_cast< float >(oldTest.l_sumP));
+  TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, diff);
+}
+
+/**
+ * @brief Test simulating a full day solar profile
+ *
+ * 24-hour simulation with sunrise ramp, midday peak, sunset ramp.
+ * ~86,400 cycles at 50Hz = 1 day, scaled down to 8,640 cycles.
+ */
+void test_daily_solar_profile(void)
+{
+  OldImplementation oldTest;
+  NewImplementation newTest;
+  oldTest.l_DCoffset_V = 512L * 256L;
+  newTest.i_DCoffset_V = 512U << 6;
+
+  rng.seed(22222);
+
+  // Simulate 1 day scaled: 8640 cycles = 172.8 seconds at 50Hz
+  // Represents: 0=midnight, 2160=6am, 4320=noon, 6480=6pm, 8640=midnight
+  const int NUM_CYCLES = 8640;
+  const int16_t NOISE_AMPLITUDE = 2;
+  const int16_t NIGHT_CURRENT = 0;   // No generation at night
+  const int16_t PEAK_CURRENT = 380;  // Peak solar at noon
+
+  for (int cycle = 0; cycle < NUM_CYCLES; ++cycle)
+  {
+    // Solar profile: sine wave with peak at noon (cycle 4320)
+    // Night from 0-1440 (midnight-4am scaled) and 7200-8640 (8pm-midnight scaled)
+    float hour = 24.0f * cycle / NUM_CYCLES;
+    float solar_factor;
+
+    if (hour < 6.0f || hour > 20.0f)
+    {
+      solar_factor = 0.0f;  // Night
+    }
+    else
+    {
+      // Day: sine curve peaking at noon (hour 12)
+      float day_progress = (hour - 6.0f) / 14.0f;  // 0 at 6am, 1 at 8pm
+      solar_factor = sinf(day_progress * PI);
+    }
+
+    int16_t current_amp = static_cast< int16_t >(PEAK_CURRENT * solar_factor);
+    if (current_amp < 5) current_amp = 5;  // Minimum for calculation stability
+
+    for (uint16_t s = 0; s < SAMPLES_PER_CYCLE; ++s)
+    {
+      uint16_t v_adc = generateSineADCWithNoise(s, ADC_MID_POINT, VOLTAGE_AMPLITUDE, NOISE_AMPLITUDE);
+      uint16_t i_adc = generateSineADCWithNoise(s, ADC_MID_POINT, current_amp, NOISE_AMPLITUDE);
+
+      oldTest.processPolarity(v_adc);
+      oldTest.processCurrentRawSample(i_adc);
+      oldTest.processVoltage();
+
+      newTest.processPolarity(toLeftAligned(v_adc));
+      newTest.processCurrentRawSample(toLeftAligned(i_adc));
+      newTest.processVoltage();
+
+      if (s == SAMPLES_PER_HALF_CYCLE - 1)
+      {
+        oldTest.processMinusHalfCycle();
+        newTest.processMinusHalfCycle();
+      }
+    }
+  }
+
+  float diff = 100.0f * fabsf(static_cast< float >(newTest.l_sumP - oldTest.l_sumP))
+               / fabsf(static_cast< float >(oldTest.l_sumP));
+  TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, diff);
+}
+
+/**
+ * @brief Test with import/export transitions (bidirectional power flow)
+ *
+ * Simulates a household with solar: exporting during day, importing at night,
+ * with rapid transitions as clouds pass or loads switch.
+ */
+void test_import_export_transitions(void)
+{
+  OldImplementation oldTest;
+  NewImplementation newTest;
+  oldTest.l_DCoffset_V = 512L * 256L;
+  newTest.i_DCoffset_V = 512U << 6;
+
+  rng.seed(33333);
+
+  const int NUM_CYCLES = 10000;
+  const int16_t NOISE_AMPLITUDE = 2;
+
+  // Varying phase shift to simulate import (0°) to export (180°) transitions
+  float phase = 0.0f;
+  float phase_velocity = 0.0f;
+
+  for (int cycle = 0; cycle < NUM_CYCLES; ++cycle)
+  {
+    // Random phase transitions (simulating load/generation balance changes)
+    if (rng.next() % 200 == 0)
+    {
+      phase_velocity = (static_cast< float >(rng.next() % 100) - 50) / 1000.0f;
+    }
+
+    phase += phase_velocity;
+    if (phase > PI) phase = PI;
+    if (phase < 0) phase = 0;
+
+    int16_t current_amp = 150 + rng.noise(50);  // Variable current too
+
+    for (uint16_t s = 0; s < SAMPLES_PER_CYCLE; ++s)
+    {
+      uint16_t v_adc = generateSineADCWithNoise(s, ADC_MID_POINT, VOLTAGE_AMPLITUDE, NOISE_AMPLITUDE, 0.0f);
+      uint16_t i_adc = generateSineADCWithNoise(s, ADC_MID_POINT, current_amp, NOISE_AMPLITUDE, phase);
+
+      oldTest.processPolarity(v_adc);
+      oldTest.processCurrentRawSample(i_adc);
+      oldTest.processVoltage();
+
+      newTest.processPolarity(toLeftAligned(v_adc));
+      newTest.processCurrentRawSample(toLeftAligned(i_adc));
+      newTest.processVoltage();
+
+      if (s == SAMPLES_PER_HALF_CYCLE - 1)
+      {
+        oldTest.processMinusHalfCycle();
+        newTest.processMinusHalfCycle();
+      }
+    }
+  }
+
+  // For bidirectional flow, accumulated power might be small, use absolute check
+  int32_t abs_diff = abs(newTest.l_sumP - oldTest.l_sumP);
+  int32_t max_power = abs(oldTest.l_sumP) > abs(newTest.l_sumP) ? abs(oldTest.l_sumP) : abs(newTest.l_sumP);
+
+  if (max_power > 100000)
+  {
+    // Import/export transitions involve power crossing through zero,
+    // which can cause larger relative differences. 1% is acceptable.
+    float diff = 100.0f * static_cast< float >(abs_diff) / static_cast< float >(max_power);
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 0.0f, diff);
+  }
+  else
+  {
+    // Small net power, just check absolute difference
+    TEST_ASSERT_INT32_WITHIN(10000, oldTest.l_sumP, newTest.l_sumP);
+  }
+}
+
+// ============================================================================
 // Main
 // ============================================================================
 
@@ -1224,6 +1608,14 @@ int main(int argc, char** argv)
   RUN_TEST(test_with_higher_noise_5lsb);           // ±5 LSB noise
   RUN_TEST(test_varying_power_factor_with_noise);  // Various PF + noise
   RUN_TEST(test_stress_50000_cycles);              // 50,000 cycles stress test
+
+  // Realistic load variation tests
+  RUN_TEST(test_multiple_current_amplitudes);  // Light to heavy load
+  RUN_TEST(test_sinusoidal_load_variation);    // Gradual load changes
+  RUN_TEST(test_random_load_steps);            // Appliance switching
+  RUN_TEST(test_cloud_shadow_simulation);      // Solar cloud shadows
+  RUN_TEST(test_daily_solar_profile);          // Full day simulation
+  RUN_TEST(test_import_export_transitions);    // Bidirectional power flow
 
   return UNITY_END();
 }
