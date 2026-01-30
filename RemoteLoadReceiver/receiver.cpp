@@ -226,27 +226,31 @@ void processRfMessages()
 void checkRfTimeout()
 {
   // Check for RF timeout
-  if ((millis() - lastMessageTime) > RF_TIMEOUT_MS)
+  if ((millis() - lastMessageTime) <= RF_TIMEOUT_MS)
   {
-    if (rfStatus != RF_LOST)
-    {
-      rfStatus = RF_LOST;
-      Serial.println(F("RF link LOST - turning all loads OFF"));
-
-      // Safety: Turn all loads OFF when RF link is lost (fast direct port manipulation)
-      uint16_t pinsOFF{ 0 };
-      uint8_t i{ NO_OF_LOADS };
-      do
-      {
-        --i;
-        pinsOFF |= bit(loadPins[i]);
-      } while (i);
-      setPinsOFF(pinsOFF);
-
-      // Reset previous bitmask so next valid message will be printed
-      previousLoadBitmask = 0xFF;
-    }
+    return;
   }
+
+  if (rfStatus == RF_LOST)
+  {
+    return;
+  }
+
+  rfStatus = RF_LOST;
+  Serial.println(F("RF link LOST - turning all loads OFF"));
+
+  // Safety: Turn all loads OFF when RF link is lost (fast direct port manipulation)
+  uint16_t pinsOFF{ 0 };
+  uint8_t i{ NO_OF_LOADS };
+  do
+  {
+    --i;
+    pinsOFF |= bit(loadPins[i]);
+  } while (i);
+  setPinsOFF(pinsOFF);
+
+  // Reset previous bitmask so next valid message will be printed
+  previousLoadBitmask = 0xFF;
 }
 
 /**
