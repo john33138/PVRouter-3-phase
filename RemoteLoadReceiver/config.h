@@ -2,7 +2,7 @@
  * @file config.h
  * @brief Configuration settings for Remote Load Receiver
  * @version 2.0
- * @date 2026-01-29
+ * @date 2026-01-30
  * @author Frédéric Metrich (frederic.metrich@live.fr)
  *
  * @copyright Copyright (c) 2025-2026
@@ -12,15 +12,10 @@
 #define CONFIG_H
 
 #include <Arduino.h>
-#include <RFM69.h>
+#include "config_rf.h"
 
-// RF Configuration - must match transmitter
-#define FREQUENCY RF69_868MHZ  // RF69_433MHZ, RF69_868MHZ, or RF69_915MHZ
-#define IS_RFM69HW false       // true for RFM69HW/HCW, false for RFM69W/CW
-
-inline constexpr uint8_t TX_NODE_ID{ 10 };  /**< Node ID of transmitter (SharedRF::THIS_NODE_ID) */
-inline constexpr uint8_t MY_NODE_ID{ 15 };  /**< This receiver's node ID (SharedRF::REMOTE_LOAD_ID) */
-inline constexpr uint8_t NETWORK_ID{ 210 }; /**< Network ID (1-255, must match transmitter) */
+// Import RF configuration
+using namespace RFConfig;
 
 // Load Configuration
 inline constexpr uint8_t NO_OF_LOADS{ 2 };              /**< Number of loads controlled by this unit */
@@ -35,6 +30,9 @@ inline constexpr bool STATUS_LEDS_PRESENT{ true }; /**< Enable status LED suppor
 inline constexpr unsigned long RF_TIMEOUT_MS{ 500 };         /**< Lost RF link after this many milliseconds */
 inline constexpr unsigned long WATCHDOG_INTERVAL_MS{ 1000 }; /**< Toggle watchdog this often */
 
+// Red LED: OFF when RF OK, fast blink (~4Hz) when RF lost
+inline constexpr unsigned long RED_LED_INTERVAL_MS{ 125 };
+
 // Pin configuration for RFM69 module
 inline constexpr uint8_t RF_CS_PIN{ 10 }; /**< SPI Chip Select pin */
 inline constexpr uint8_t RF_IRQ_PIN{ 2 }; /**< Interrupt pin */
@@ -46,10 +44,10 @@ struct RemoteLoadPayload
 };
 
 // RF Status enumeration
-enum RfStatus
+enum class RfStatus : uint8_t
 {
-  RF_OK,  /**< RF link is active */
-  RF_LOST /**< RF link has been lost */
+  OK,  /**< RF link is active */
+  LOST /**< RF link has been lost */
 };
 
 #endif  // CONFIG_H
