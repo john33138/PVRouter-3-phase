@@ -153,23 +153,23 @@ void processRfMessages()
       }
 
       // Debug output - only print if data has changed
-      if (receivedData.loadBitmask != previousLoadBitmask)
-      {
-        Serial.print(F("Received: 0b"));
-        Serial.print(receivedData.loadBitmask, BIN);
-        Serial.print(F(" (RSSI: "));
-        Serial.print(radio.RSSI);
-        Serial.print(F(") - Loads: "));
-        for (uint8_t i = 0; i < NO_OF_LOADS; ++i)
-        {
-          Serial.print(i);
-          Serial.print(F(":"));
-          Serial.print((receivedData.loadBitmask & (1 << i)) ? F("ON ") : F("OFF "));
-        }
-        Serial.println();
+      // if (receivedData.loadBitmask != previousLoadBitmask)
+      // {
+      //   Serial.print(F("Received: 0b"));
+      //   Serial.print(receivedData.loadBitmask, BIN);
+      //   Serial.print(F(" (RSSI: "));
+      //   Serial.print(radio.RSSI);
+      //   Serial.print(F(") - Loads: "));
+      //   for (uint8_t i = 0; i < NO_OF_LOADS; ++i)
+      //   {
+      //     Serial.print(i);
+      //     Serial.print(F(":"));
+      //     Serial.print((receivedData.loadBitmask & (1 << i)) ? F("ON ") : F("OFF "));
+      //   }
+      //   Serial.println();
 
-        previousLoadBitmask = receivedData.loadBitmask;
-      }
+      //   previousLoadBitmask = receivedData.loadBitmask;
+      // }
     }
   }
 }
