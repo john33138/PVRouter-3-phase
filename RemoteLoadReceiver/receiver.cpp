@@ -153,23 +153,24 @@ void updateStatusLED()
     return;
   }
 
-  // Green LED is handled by updateWatchdog() using togglePin()
+  // Green LED is handled by Timer1 ISR
 
-  // Red LED: Fast blink when RF lost (~4Hz = 125ms period)
+  // Red LED: OFF when RF OK, fast blink (~4Hz) when RF lost
   constexpr unsigned long RED_LED_INTERVAL_MS{ 125 };
 
-  if (rfStatus == RF_LOST)
+  if (rfStatus != RF_LOST)
   {
-    if ((millis() - lastRedLedToggle) > RED_LED_INTERVAL_MS)
-    {
-      togglePin(RED_LED_PIN);
-      lastRedLedToggle = millis();
-    }
+    setPinOFF(RED_LED_PIN);
+    return;
   }
-  else
+
+  if ((millis() - lastRedLedToggle) <= RED_LED_INTERVAL_MS)
   {
-    setPinOFF(RED_LED_PIN);  // RF OK - red LED off
+    return;
   }
+
+  togglePin(RED_LED_PIN);
+  lastRedLedToggle = millis();
 }
 
 void processRfMessages()
