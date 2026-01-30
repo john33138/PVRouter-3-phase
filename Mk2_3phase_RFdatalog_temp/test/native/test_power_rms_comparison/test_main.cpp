@@ -16,6 +16,7 @@
 
 #include <unity.h>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cmath>
 
@@ -286,6 +287,50 @@ public:
 
 // Global RNG for tests
 SimpleRNG rng;
+
+// ============================================================================
+// Test Statistics Output
+// ============================================================================
+
+/**
+ * @brief Structure to hold test statistics for comparison
+ */
+struct TestStats
+{
+  const char* testName;
+  int cycles;
+  int16_t minCurrent;
+  int16_t maxCurrent;
+  int32_t oldSumP;
+  int32_t newSumP;
+  uint32_t oldSumVsq;
+  uint32_t newSumVsq;
+
+  void print() const
+  {
+    int32_t diffP = newSumP - oldSumP;
+    float pctP = (oldSumP != 0) ? 100.0f * fabsf(static_cast< float >(diffP)) / fabsf(static_cast< float >(oldSumP)) : 0.0f;
+
+    printf("\n  [%s]\n", testName);
+    printf("    Cycles: %d, Current range: %d-%d ADC\n", cycles, minCurrent, maxCurrent);
+    printf("    Power - Old: %ld, New: %ld, Diff: %ld (%.4f%%)\n",
+           static_cast< long >(oldSumP),
+           static_cast< long >(newSumP),
+           static_cast< long >(diffP),
+           static_cast< double >(pctP));
+
+    if (oldSumVsq > 0 || newSumVsq > 0)
+    {
+      int32_t diffVsq = static_cast< int32_t >(newSumVsq) - static_cast< int32_t >(oldSumVsq);
+      float pctVsq = (oldSumVsq != 0) ? 100.0f * fabsf(static_cast< float >(diffVsq)) / static_cast< float >(oldSumVsq) : 0.0f;
+      printf("    V^2   - Old: %lu, New: %lu, Diff: %ld (%.4f%%)\n",
+             static_cast< unsigned long >(oldSumVsq),
+             static_cast< unsigned long >(newSumVsq),
+             static_cast< long >(diffVsq),
+             static_cast< double >(pctVsq));
+    }
+  }
+};
 
 /**
  * @brief Generate sinusoidal ADC value
@@ -1204,6 +1249,11 @@ void test_multiple_current_amplitudes(void)
   // Max amplitude ~505 with ADC mid-point at 512 (stays within 7-1017)
   int16_t current_amplitudes[] = { 20, 50, 100, 150, 200, 300, 400, 450, 500, 505 };
   const int16_t NOISE_AMPLITUDE = 2;
+  const int NUM_CYCLES = 1000;
+
+  printf("\n  [test_multiple_current_amplitudes]\n");
+  printf("    Testing %zu amplitude levels, %d cycles each:\n", sizeof(current_amplitudes) / sizeof(current_amplitudes[0]), NUM_CYCLES);
+  printf("    %6s %12s %12s %12s %10s\n", "Amp", "Old_sumP", "New_sumP", "Diff", "Diff%");
 
   for (int16_t i_amp : current_amplitudes)
   {
@@ -1214,8 +1264,8 @@ void test_multiple_current_amplitudes(void)
 
     rng.seed(77777);
 
-    // Run 1000 cycles for each amplitude
-    for (int cycle = 0; cycle < 1000; ++cycle)
+    // Run cycles for each amplitude
+    for (int cycle = 0; cycle < NUM_CYCLES; ++cycle)
     {
       for (uint16_t s = 0; s < SAMPLES_PER_CYCLE; ++s)
       {
@@ -1238,12 +1288,19 @@ void test_multiple_current_amplitudes(void)
       }
     }
 
+    int32_t diff = newTest.l_sumP - oldTest.l_sumP;
+    float pct = (oldTest.l_sumP != 0) ? 100.0f * fabsf(static_cast< float >(diff)) / fabsf(static_cast< float >(oldTest.l_sumP)) : 0.0f;
+    printf("    %6d %12ld %12ld %12ld %9.4f%%\n",
+           i_amp,
+           static_cast< long >(oldTest.l_sumP),
+           static_cast< long >(newTest.l_sumP),
+           static_cast< long >(diff),
+           static_cast< double >(pct));
+
     // For meaningful current, check percentage difference
     if (i_amp >= 50)
     {
-      float diff = 100.0f * fabsf(static_cast< float >(newTest.l_sumP - oldTest.l_sumP))
-                   / fabsf(static_cast< float >(oldTest.l_sumP));
-      TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, diff);
+      TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, pct);
     }
   }
 }
@@ -1296,9 +1353,18 @@ void test_sinusoidal_load_variation(void)
     }
   }
 
-  float diff = 100.0f * fabsf(static_cast< float >(newTest.l_sumP - oldTest.l_sumP))
-               / fabsf(static_cast< float >(oldTest.l_sumP));
-  TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, diff);
+  int32_t diffP = newTest.l_sumP - oldTest.l_sumP;
+  float pctP = 100.0f * fabsf(static_cast< float >(diffP)) / fabsf(static_cast< float >(oldTest.l_sumP));
+
+  printf("\n  [test_sinusoidal_load_variation]\n");
+  printf("    Cycles: %d, Current range: %d-%d ADC (sinusoidal variation)\n", NUM_CYCLES, MIN_CURRENT, MAX_CURRENT);
+  printf("    Power - Old: %ld, New: %ld, Diff: %ld (%.4f%%)\n",
+         static_cast< long >(oldTest.l_sumP),
+         static_cast< long >(newTest.l_sumP),
+         static_cast< long >(diffP),
+         static_cast< double >(pctP));
+
+  TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, pctP);
 }
 
 /**
@@ -1318,6 +1384,8 @@ void test_random_load_steps(void)
 
   const int NUM_CYCLES = 10000;
   const int16_t NOISE_AMPLITUDE = 2;
+  const int16_t MIN_CURRENT = 20;
+  const int16_t MAX_CURRENT = 505;
   int16_t current_amp = 200;  // Start with medium load
   int cycles_until_change = 30;
 
@@ -1326,8 +1394,8 @@ void test_random_load_steps(void)
     // Random load step changes
     if (--cycles_until_change <= 0)
     {
-      // Random new current amplitude (20-400)
-      current_amp = 20 + static_cast< int16_t >(rng.next() % 485);  // Up to 505 (near ADC limit)
+      // Random new current amplitude (20-505)
+      current_amp = MIN_CURRENT + static_cast< int16_t >(rng.next() % (MAX_CURRENT - MIN_CURRENT + 1));
       // Random duration until next change (10-50 cycles)
       cycles_until_change = 10 + static_cast< int >(rng.next() % 40);
     }
@@ -1353,10 +1421,19 @@ void test_random_load_steps(void)
     }
   }
 
+  int32_t diffP = newTest.l_sumP - oldTest.l_sumP;
+  float pctP = 100.0f * fabsf(static_cast< float >(diffP)) / fabsf(static_cast< float >(oldTest.l_sumP));
+
+  printf("\n  [test_random_load_steps]\n");
+  printf("    Cycles: %d, Current range: %d-%d ADC (random steps)\n", NUM_CYCLES, MIN_CURRENT, MAX_CURRENT);
+  printf("    Power - Old: %ld, New: %ld, Diff: %ld (%.4f%%)\n",
+         static_cast< long >(oldTest.l_sumP),
+         static_cast< long >(newTest.l_sumP),
+         static_cast< long >(diffP),
+         static_cast< double >(pctP));
+
   // With ADC-limit amplitudes and random loads, allow 0.2% difference
-  float diff = 100.0f * fabsf(static_cast< float >(newTest.l_sumP - oldTest.l_sumP))
-               / fabsf(static_cast< float >(oldTest.l_sumP));
-  TEST_ASSERT_FLOAT_WITHIN(0.2f, 0.0f, diff);
+  TEST_ASSERT_FLOAT_WITHIN(0.2f, 0.0f, pctP);
 }
 
 /**
@@ -1425,10 +1502,19 @@ void test_cloud_shadow_simulation(void)
     }
   }
 
+  int32_t diffP = newTest.l_sumP - oldTest.l_sumP;
+  float pctP = 100.0f * fabsf(static_cast< float >(diffP)) / fabsf(static_cast< float >(oldTest.l_sumP));
+
+  printf("\n  [test_cloud_shadow_simulation]\n");
+  printf("    Cycles: %d, Current range: %d-%d ADC (cloud dynamics)\n", NUM_CYCLES, CLOUDY_CURRENT, CLEAR_SKY_CURRENT);
+  printf("    Power - Old: %ld, New: %ld, Diff: %ld (%.4f%%)\n",
+         static_cast< long >(oldTest.l_sumP),
+         static_cast< long >(newTest.l_sumP),
+         static_cast< long >(diffP),
+         static_cast< double >(pctP));
+
   // With ADC-limit amplitudes and cloud dynamics, allow 0.2% difference
-  float diff = 100.0f * fabsf(static_cast< float >(newTest.l_sumP - oldTest.l_sumP))
-               / fabsf(static_cast< float >(oldTest.l_sumP));
-  TEST_ASSERT_FLOAT_WITHIN(0.2f, 0.0f, diff);
+  TEST_ASSERT_FLOAT_WITHIN(0.2f, 0.0f, pctP);
 }
 
 /**
@@ -1450,7 +1536,7 @@ void test_daily_solar_profile(void)
   // Represents: 0=midnight, 2160=6am, 4320=noon, 6480=6pm, 8640=midnight
   const int NUM_CYCLES = 8640;
   const int16_t NOISE_AMPLITUDE = 2;
-  const int16_t NIGHT_CURRENT = 0;   // No generation at night
+  const int16_t NIGHT_CURRENT = 5;   // Minimum current during night
   const int16_t PEAK_CURRENT = 500;  // Peak solar at noon (near ADC limit)
 
   for (int cycle = 0; cycle < NUM_CYCLES; ++cycle)
@@ -1472,7 +1558,7 @@ void test_daily_solar_profile(void)
     }
 
     int16_t current_amp = static_cast< int16_t >(PEAK_CURRENT * solar_factor);
-    if (current_amp < 5) current_amp = 5;  // Minimum for calculation stability
+    if (current_amp < NIGHT_CURRENT) current_amp = NIGHT_CURRENT;  // Minimum for calculation stability
 
     for (uint16_t s = 0; s < SAMPLES_PER_CYCLE; ++s)
     {
@@ -1495,19 +1581,24 @@ void test_daily_solar_profile(void)
     }
   }
 
+  int32_t diffP = newTest.l_sumP - oldTest.l_sumP;
+  int32_t abs_diff = abs(diffP);
+  int32_t max_power = abs(oldTest.l_sumP) > abs(newTest.l_sumP) ? abs(oldTest.l_sumP) : abs(newTest.l_sumP);
+  float pctP = (max_power > 0) ? 100.0f * static_cast< float >(abs_diff) / static_cast< float >(max_power) : 0.0f;
+
+  printf("\n  [test_daily_solar_profile]\n");
+  printf("    Cycles: %d, Current range: %d-%d ADC (24h solar profile)\n", NUM_CYCLES, NIGHT_CURRENT, PEAK_CURRENT);
+  printf("    Power - Old: %ld, New: %ld, Diff: %ld (%.4f%%)\n",
+         static_cast< long >(oldTest.l_sumP),
+         static_cast< long >(newTest.l_sumP),
+         static_cast< long >(diffP),
+         static_cast< double >(pctP));
+
   // Daily profile has many night cycles with low current where noise accumulates.
   // With peak current at ADC limit and noise, allow up to 3% difference.
-  // This is still valid because:
-  // 1. At high amplitudes during day, difference is <0.2%
-  // 2. At night (low current), small absolute differences cause high percentages
-  // 3. The test validates behavior across the full dynamic range
-  int32_t abs_diff = abs(newTest.l_sumP - oldTest.l_sumP);
-  int32_t max_power = abs(oldTest.l_sumP) > abs(newTest.l_sumP) ? abs(oldTest.l_sumP) : abs(newTest.l_sumP);
-
   if (max_power > 100000)
   {
-    float diff = 100.0f * static_cast< float >(abs_diff) / static_cast< float >(max_power);
-    TEST_ASSERT_FLOAT_WITHIN(3.0f, 0.0f, diff);
+    TEST_ASSERT_FLOAT_WITHIN(3.0f, 0.0f, pctP);
   }
   else
   {
@@ -1575,6 +1666,15 @@ void test_import_export_transitions(void)
   // For bidirectional flow, accumulated power might be small, use absolute check
   int32_t abs_diff = abs(newTest.l_sumP - oldTest.l_sumP);
   int32_t max_power = abs(oldTest.l_sumP) > abs(newTest.l_sumP) ? abs(oldTest.l_sumP) : abs(newTest.l_sumP);
+  float pctP = (max_power > 0) ? 100.0f * static_cast< float >(abs_diff) / static_cast< float >(max_power) : 0.0f;
+
+  printf("\n  [test_import_export_transitions]\n");
+  printf("    Cycles: %d, Current range: ~100-200 ADC (phase 0-PI transitions)\n", NUM_CYCLES);
+  printf("    Power - Old: %ld, New: %ld, Diff: %ld (%.4f%%)\n",
+         static_cast< long >(oldTest.l_sumP),
+         static_cast< long >(newTest.l_sumP),
+         static_cast< long >(newTest.l_sumP - oldTest.l_sumP),
+         static_cast< double >(pctP));
 
   if (max_power > 100000)
   {
