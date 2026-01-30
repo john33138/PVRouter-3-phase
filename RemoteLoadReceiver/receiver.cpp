@@ -14,7 +14,6 @@
 // Global state variables
 RfStatus rfStatus{ RF_LOST };
 unsigned long lastMessageTime{ 0 };
-unsigned long lastWatchdogToggle{ 0 };
 unsigned long lastRedLedToggle{ 0 };
 uint8_t previousLoadBitmask{ 0xFF };  // Initialize to invalid value to force first print
 RemoteLoadPayload receivedData;
@@ -26,6 +25,35 @@ RemoteLoadPayload receivedData;
 
 // RFM69 radio instance
 RFM69 radio(RFConfig::RF_CS_PIN, RFConfig::RF_IRQ_PIN, RFConfig::IS_RFM69HW);
+
+/**
+ * @brief Timer1 Compare Match ISR for watchdog LED
+ * @details Toggles green LED at 1Hz (every 1 second)
+ *          Using Timer1 in CTC mode with prescaler 1024
+ *          OCR1A = 15624 for 1 second interval @ 16MHz
+ */
+ISR(TIMER1_COMPA_vect)
+{
+  if constexpr (STATUS_LEDS_PRESENT)
+  {
+    togglePin(GREEN_LED_PIN);
+  }
+}
+
+/**
+ * @brief Initialize Timer1 for watchdog LED toggle
+ * @details CTC mode, prescaler 1024, 1 second interval
+ */
+void initializeWatchdogTimer()
+{
+  // Timer1 CTC mode, prescaler 1024
+  // For 1 second @ 16MHz: 16000000 / 1024 = 15625 ticks per second
+  // OCR1A = 15625 - 1 = 15624
+  TCCR1A = 0;
+  TCCR1B = (1 << WGM12) | (1 << CS12) | (1 << CS10);  // CTC mode, prescaler 1024
+  OCR1A = 15624;                                      // 1 second interval
+  TIMSK1 = (1 << OCIE1A);                             // Enable compare match interrupt
+}
 
 void initializeReceiver()
 {
@@ -49,6 +77,9 @@ void initializeReceiver()
     setPinsAsOutput(ledPinMask);
     setPinsOFF(ledPinMask);
   }
+
+  // Initialize Timer1 for watchdog LED toggle (1Hz)
+  initializeWatchdogTimer();
 
   // Initialize serial for debugging
   Serial.begin(9600);
@@ -88,18 +119,6 @@ void initializeReceiver()
   Serial.println();
 
   lastMessageTime = millis();
-}
-
-void updateWatchdog()
-{
-  if ((millis() - lastWatchdogToggle) > WATCHDOG_INTERVAL_MS)
-  {
-    if constexpr (STATUS_LEDS_PRESENT)
-    {
-      togglePin(GREEN_LED_PIN);  // Fast direct port toggle
-    }
-    lastWatchdogToggle = millis();
-  }
 }
 
 void updateLoads(uint8_t bitmask)
@@ -242,7 +261,6 @@ void loop()
   processRfMessages();
   checkRfTimeout();
   updateStatusLED();
-  updateWatchdog();
 }
 
 int freeRam()
