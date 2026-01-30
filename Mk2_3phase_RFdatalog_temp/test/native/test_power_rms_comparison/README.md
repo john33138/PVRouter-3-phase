@@ -66,13 +66,15 @@ Verify that the new left-aligned ADC implementation produces equivalent results 
 
 ### Realistic Load Variation Tests (6 tests)
 
+All tests use current amplitudes up to ADC limit (~505 with mid-point at 512).
+
 | Test | Description |
 |------|-------------|
-| `test_multiple_current_amplitudes` | Tests 7 different current levels (20-400) from light to heavy load |
-| `test_sinusoidal_load_variation` | Current amplitude varies sinusoidally over 5,000 cycles |
-| `test_random_load_steps` | Random appliance on/off events over 10,000 cycles |
-| `test_cloud_shadow_simulation` | Solar cloud shadow dynamics over 10,000 cycles |
-| `test_daily_solar_profile` | 24-hour solar pattern (8,640 cycles = 24 hrs scaled) |
+| `test_multiple_current_amplitudes` | Tests 10 different current levels (20-505) from light to ADC limit |
+| `test_sinusoidal_load_variation` | Current amplitude varies 50-500 sinusoidally over 5,000 cycles |
+| `test_random_load_steps` | Random appliance on/off (20-505) over 10,000 cycles |
+| `test_cloud_shadow_simulation` | Solar cloud shadow dynamics (80-500) over 10,000 cycles |
+| `test_daily_solar_profile` | 24-hour solar pattern with 500 peak over 8,640 cycles |
 | `test_import_export_transitions` | Bidirectional power flow with phase changes over 10,000 cycles |
 
 ## Key Findings
