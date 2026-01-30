@@ -175,48 +175,52 @@ void updateStatusLED()
 void processRfMessages()
 {
   // Check for incoming RF data
-  if (radio.receiveDone())
+  if (!radio.receiveDone())
   {
-    // Only process messages from the expected transmitter
-    if (radio.SENDERID == RFConfig::ROUTER_NODE_ID)
-    {
-      // Copy received data (single byte, direct assignment is faster than memcpy)
-      receivedData.loadBitmask = radio.DATA[0];
-
-      // Note: ACK not used - transmitter sends with requestACK=false for faster, non-blocking operation
-
-      // Update loads based on received bitmask
-      updateLoads(receivedData.loadBitmask);
-
-      // Update RF status
-      lastMessageTime = millis();
-
-      if (rfStatus != RF_OK)
-      {
-        rfStatus = RF_OK;
-        Serial.println(F("RF link restored"));
-      }
-
-      // Debug output - only print if data has changed
-      // if (receivedData.loadBitmask != previousLoadBitmask)
-      // {
-      //   Serial.print(F("Received: 0b"));
-      //   Serial.print(receivedData.loadBitmask, BIN);
-      //   Serial.print(F(" (RSSI: "));
-      //   Serial.print(radio.RSSI);
-      //   Serial.print(F(") - Loads: "));
-      //   for (uint8_t i = 0; i < NO_OF_LOADS; ++i)
-      //   {
-      //     Serial.print(i);
-      //     Serial.print(F(":"));
-      //     Serial.print((receivedData.loadBitmask & (1 << i)) ? F("ON ") : F("OFF "));
-      //   }
-      //   Serial.println();
-
-      //   previousLoadBitmask = receivedData.loadBitmask;
-      // }
-    }
+    return;
   }
+
+  // Only process messages from the expected transmitter
+  if (radio.SENDERID != RFConfig::ROUTER_NODE_ID)
+  {
+    return;
+  }
+
+  // Copy received data (single byte, direct assignment is faster than memcpy)
+  receivedData.loadBitmask = radio.DATA[0];
+
+  // Note: ACK not used - transmitter sends with requestACK=false for faster, non-blocking operation
+
+  // Update loads based on received bitmask
+  updateLoads(receivedData.loadBitmask);
+
+  // Update RF status
+  lastMessageTime = millis();
+
+  if (rfStatus != RF_OK)
+  {
+    rfStatus = RF_OK;
+    Serial.println(F("RF link restored"));
+  }
+
+  // Debug output - only print if data has changed
+  // if (receivedData.loadBitmask != previousLoadBitmask)
+  // {
+  //   Serial.print(F("Received: 0b"));
+  //   Serial.print(receivedData.loadBitmask, BIN);
+  //   Serial.print(F(" (RSSI: "));
+  //   Serial.print(radio.RSSI);
+  //   Serial.print(F(") - Loads: "));
+  //   for (uint8_t i = 0; i < NO_OF_LOADS; ++i)
+  //   {
+  //     Serial.print(i);
+  //     Serial.print(F(":"));
+  //     Serial.print((receivedData.loadBitmask & (1 << i)) ? F("ON ") : F("OFF "));
+  //   }
+  //   Serial.println();
+
+  //   previousLoadBitmask = receivedData.loadBitmask;
+  // }
 }
 
 void checkRfTimeout()
