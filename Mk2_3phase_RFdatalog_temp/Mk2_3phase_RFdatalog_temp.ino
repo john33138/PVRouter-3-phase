@@ -14,6 +14,19 @@
  *
  * @section history History
  *
+ * __January 2026: changes:__
+ * - override pins now support remote loads via virtual pin mapping
+ * - FastDivision performance benchmarks with Wokwi simulation
+ * - test suite reorganization (native vs embedded tests)
+ * - utils_bits.h extraction for bit manipulation utilities
+ * - ISR timing improvements for remote load transmissions
+ *
+ * __December 2025: changes:__
+ * - pre-commit hooks for automatic code formatting and metadata updates
+ * - renamed "forced operation" to "boost" throughout documentation
+ * - added CLAUDE.md for AI assistant guidance
+ * - two-branch workflow (main + dev) implementation
+ *
  * __October 2025: changes:__
  * - remote load support via RFM69 RF module for wireless control of heating elements
  * - centralized RF configuration in config_rf.h with shared radio instance
