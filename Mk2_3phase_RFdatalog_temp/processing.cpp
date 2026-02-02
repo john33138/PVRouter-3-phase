@@ -3,7 +3,7 @@
  * @author Frédéric Metrich (frederic.metrich@live.fr)
  * @brief Implements the processing engine
  * @version 0.1
- * @date 2026-01-29
+ * @date 2026-02-02
  *
  * @copyright Copyright (c) 2021-2026
  *
@@ -17,6 +17,11 @@
 #include "processing.h"
 #include "utils_pins.h"
 #include "shared_var.h"
+
+// analogue input pins
+inline constexpr uint8_t sensorV[NO_OF_PHASES]{ 0, 2, 4 }; /**< for 3-phase PCB, voltage measurement for each phase */
+inline constexpr uint8_t sensorI[NO_OF_PHASES]{ 1, 3, 5 }; /**< for 3-phase PCB, current measurement for each phase */
+// ------------------------------------------
 
 // Define operating limits for the LP filters which identify DC offset in the voltage
 // sample streams. By limiting the output range, these filters always should start up
